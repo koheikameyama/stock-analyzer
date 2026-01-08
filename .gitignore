@@ -39,6 +39,7 @@ coverage/
 
 # Database
 *.db
+*.db-journal
 *.sqlite
 *.sqlite3
 
@@ -51,7 +52,3 @@ Thumbs.db
 out/
 next-env.d.ts
 *.tsbuildinfo
-
-# Old directories (to be removed after migration)
-# frontend/
-# backend/
