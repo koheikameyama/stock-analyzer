@@ -84,6 +84,11 @@ export default function Home() {
             <p className="text-surface-500 mt-1">
               AIが分析した、おすすめの投資アイデアをチェックしましょう
             </p>
+            <p className="text-xs text-surface-400 mt-2">
+              {market === 'JP'
+                ? '日経225採用の時価総額上位・主要セクター代表15銘柄を分析'
+                : 'S&P500採用の時価総額上位・主要セクター代表15銘柄を分析'}
+            </p>
           </div>
 
           {/* ステータス表示 */}
