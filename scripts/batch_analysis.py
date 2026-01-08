@@ -323,7 +323,7 @@ def save_analysis_to_db(conn, stock_id: str, stock_data: StockData, analysis: Di
                     stock_data.roe,
                     stock_data.dividend_yield,
                     now,
-                    existing['id']
+                    existing[0]  # タプルなのでインデックスでアクセス
                 ))
                 print(f"  🔄 {stock_data.ticker} の分析結果を更新しました")
             else:
