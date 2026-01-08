@@ -30,6 +30,18 @@ export interface StockInfo {
 }
 
 /**
+ * 株価履歴データの型定義
+ */
+export interface PriceHistoryData {
+  date: Date;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: bigint;
+}
+
+/**
  * Yahoo Finance APIサービスクラス
  */
 export class YahooFinanceService {
@@ -71,6 +83,51 @@ export class YahooFinanceService {
     } catch (error) {
       console.error(`銘柄データ取得エラー: ${ticker}`, error);
       return null;
+    }
+  }
+
+  /**
+   * 過去の株価履歴データを取得（過去30日分）
+   * @param ticker ティッカーシンボル
+   * @param market 市場（JP/US）
+   * @param days 取得日数（デフォルト: 30日）
+   * @returns 株価履歴データの配列
+   */
+  static async fetchPriceHistory(
+    ticker: string,
+    market: 'JP' | 'US',
+    days: number = 30
+  ): Promise<PriceHistoryData[]> {
+    try {
+      const symbol = market === 'JP' ? `${ticker}.T` : ticker;
+
+      // 終了日（今日）
+      const endDate = new Date();
+      // 開始日（指定日数前）
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      // 履歴データを取得
+      const history = await yahooFinance.historical(symbol, {
+        period1: startDate,
+        period2: endDate,
+        interval: '1d', // 日次データ
+      });
+
+      // データを整形
+      const priceHistory: PriceHistoryData[] = history.map((item) => ({
+        date: item.date,
+        open: Number(item.open.toFixed(4)),
+        high: Number(item.high.toFixed(4)),
+        low: Number(item.low.toFixed(4)),
+        close: Number(item.close.toFixed(4)),
+        volume: BigInt(item.volume),
+      }));
+
+      return priceHistory;
+    } catch (error) {
+      console.error(`株価履歴取得エラー: ${ticker}`, error);
+      return [];
     }
   }
 
@@ -123,6 +180,37 @@ export class YahooFinanceService {
 
     console.log(`✅ データ取得完了: 成功 ${successCount}件, 失敗 ${failureCount}件`);
     return results;
+  }
+
+  /**
+   * 銘柄データと株価履歴を同時に取得
+   * @param ticker ティッカーシンボル
+   * @param market 市場（JP/US）
+   * @returns 銘柄情報と株価履歴
+   */
+  static async fetchStockWithHistory(
+    ticker: string,
+    market: 'JP' | 'US'
+  ): Promise<{ stockInfo: StockInfo; priceHistory: PriceHistoryData[] } | null> {
+    try {
+      // 並列で両方のデータを取得
+      const [stockInfo, priceHistory] = await Promise.all([
+        this.fetchStockData(ticker, market),
+        this.fetchPriceHistory(ticker, market),
+      ]);
+
+      if (!stockInfo) {
+        return null;
+      }
+
+      return {
+        stockInfo,
+        priceHistory,
+      };
+    } catch (error) {
+      console.error(`銘柄データ+履歴取得エラー: ${ticker}`, error);
+      return null;
+    }
   }
 
   /**

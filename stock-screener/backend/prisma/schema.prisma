@@ -1,5 +1,5 @@
 // Prismaスキーマ定義
-// 銘柄スクリーニングツールのデータモデル
+// AI株式分析ツールのデータモデル
 
 generator client {
   provider = "prisma-client-js"
@@ -12,36 +12,113 @@ datasource db {
 
 // 銘柄データモデル
 model Stock {
-  // 主キー - ティッカーシンボル
-  ticker String @id @db.VarChar(20)
+  // 主キー - UUID
+  id     String @id @default(uuid()) @db.Uuid
+
+  // ティッカーシンボル（ユニーク制約）
+  ticker String @unique @db.VarChar(20)
 
   // 基本情報
   name   String @db.VarChar(200)
   market String @db.VarChar(2) // 'JP' または 'US'
   sector String? @db.VarChar(100)
 
-  // 財務指標
-  marketCap      BigInt? // 時価総額
-  per            Decimal? @db.Decimal(10, 2) // 株価収益率
-  pbr            Decimal? @db.Decimal(10, 2) // 株価純資産倍率
-  roe            Decimal? @db.Decimal(10, 2) // 自己資本利益率（%）
-  dividendYield  Decimal? @db.Decimal(10, 2) // 配当利回り（%）
-  price          Decimal? @db.Decimal(20, 4) // 現在株価
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // メタデータ
-  currency    String   @db.VarChar(3) // 'JPY' または 'USD'
-  lastUpdated DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  // リレーション
+  analyses     Analysis[]
+  priceHistory PriceHistory[]
 
   // インデックス
   @@index([market])
   @@index([sector])
-  @@index([marketCap])
-  @@index([per])
-  @@index([pbr])
-  @@index([roe])
-  @@index([dividendYield])
-  @@index([price])
   @@map("stocks")
+}
+
+// AI分析結果モデル
+model Analysis {
+  // 主キー
+  id String @id @default(uuid()) @db.Uuid
+
+  // 外部キー - Stock
+  stockId String @db.Uuid
+  stock   Stock  @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  // 分析日時
+  analysisDate DateTime @default(now())
+
+  // AI推奨
+  recommendation  String @db.VarChar(20) // 'Buy', 'Sell', 'Hold'
+  confidenceScore Int // 0-100
+
+  // 推奨理由
+  reasonShort    String @db.Text // 短文（100-200文字）
+  reasonDetailed String @db.Text // 詳細（500-1000文字）
+
+  // 分析時の株価・財務指標
+  currentPrice  Decimal? @db.Decimal(20, 4)
+  peRatio       Decimal? @db.Decimal(10, 2)
+  pbRatio       Decimal? @db.Decimal(10, 2)
+  roe           Decimal? @db.Decimal(10, 2)
+  dividendYield Decimal? @db.Decimal(10, 2)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // インデックス
+  @@index([stockId, analysisDate])
+  @@index([analysisDate])
+  @@index([recommendation])
+  @@map("analyses")
+}
+
+// 株価履歴モデル
+model PriceHistory {
+  // 主キー
+  id String @id @default(uuid()) @db.Uuid
+
+  // 外部キー - Stock
+  stockId String @db.Uuid
+  stock   Stock  @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  // 日付と株価データ
+  date   DateTime
+  open   Decimal  @db.Decimal(20, 4)
+  high   Decimal  @db.Decimal(20, 4)
+  low    Decimal  @db.Decimal(20, 4)
+  close  Decimal  @db.Decimal(20, 4)
+  volume BigInt
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+
+  // ユニーク制約とインデックス
+  @@unique([stockId, date])
+  @@index([stockId, date])
+  @@map("price_history")
+}
+
+// バッチジョブログモデル
+model BatchJobLog {
+  // 主キー
+  id String @id @default(uuid()) @db.Uuid
+
+  // ジョブ情報
+  jobDate      DateTime
+  status       String  @db.VarChar(20) // 'success', 'partial_success', 'failure'
+  totalStocks  Int
+  successCount Int
+  failureCount Int
+  errorMessage String? @db.Text
+  duration     Int // ミリ秒
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+
+  // インデックス
+  @@index([jobDate])
+  @@map("batch_job_logs")
 }
