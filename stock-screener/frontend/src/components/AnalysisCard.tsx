@@ -1,184 +1,83 @@
 /**
- * AI分析結果カードコンポーネント
- * 個別の分析結果をカード形式で表示
+ * 分析カードコンポーネント
  */
 
 import React from 'react';
-import type { Analysis, Recommendation } from '../types/analysis';
+import type { Analysis } from '../types/analysis';
 
 interface AnalysisCardProps {
   analysis: Analysis;
   onDetailClick: (analysisId: string) => void;
 }
 
-/**
- * 推奨アクションの設定を取得
- */
-const getRecommendationConfig = (recommendation: Recommendation) => {
-  switch (recommendation) {
-    case 'Buy':
-      return {
-        bgGradient: 'from-green-500 to-emerald-600',
-        headerGradient: 'from-green-500 to-emerald-600',
-        badgeGradient: 'from-green-500 to-emerald-600',
-        progressGradient: 'from-green-500 to-emerald-600',
-        icon: (
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-          </svg>
-        ),
-        label: '買い推奨',
-        shadowColor: 'hover:shadow-green-500/30',
-      };
-    case 'Sell':
-      return {
-        bgGradient: 'from-red-500 to-rose-600',
-        headerGradient: 'from-red-500 to-rose-600',
-        badgeGradient: 'from-red-500 to-rose-600',
-        progressGradient: 'from-red-500 to-rose-600',
-        icon: (
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-          </svg>
-        ),
-        label: '売り推奨',
-        shadowColor: 'hover:shadow-red-500/30',
-      };
-    case 'Hold':
-      return {
-        bgGradient: 'from-amber-500 to-orange-600',
-        headerGradient: 'from-amber-500 to-orange-600',
-        badgeGradient: 'from-amber-500 to-orange-600',
-        progressGradient: 'from-amber-500 to-orange-600',
-        icon: (
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        ),
-        label: 'ホールド',
-        shadowColor: 'hover:shadow-amber-500/30',
-      };
-    default:
-      return {
-        bgGradient: 'from-gray-500 to-gray-600',
-        headerGradient: 'from-gray-500 to-gray-600',
-        badgeGradient: 'from-gray-500 to-gray-600',
-        progressGradient: 'from-gray-500 to-gray-600',
-        icon: null,
-        label: recommendation,
-        shadowColor: 'hover:shadow-gray-500/30',
-      };
-  }
-};
+export const AnalysisCard: React.FC<AnalysisCardProps> = ({
+  analysis,
+  onDetailClick,
+}) => {
+  const { stock, recommendation, confidenceScore, currentPrice, summary } = analysis;
 
-/**
- * AI分析結果カードコンポーネント
- */
-export const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, onDetailClick }) => {
-  const config = getRecommendationConfig(analysis.recommendation);
-  const priceFormatted = analysis.currentPrice
-    ? `¥${Number(analysis.currentPrice).toLocaleString()}`
-    : 'N/A';
+  const getRecommendationColor = (rec: string) => {
+    switch (rec) {
+      case 'Buy':
+        return 'text-emerald-700 bg-emerald-50 border-emerald-200';
+      case 'Sell':
+        return 'text-red-700 bg-red-50 border-red-200';
+      case 'Hold':
+        return 'text-amber-700 bg-amber-50 border-amber-200';
+      default:
+        return 'text-surface-700 bg-surface-50 border-surface-200';
+    }
+  };
+
+  const scoreColor =
+    confidenceScore >= 80 ? 'text-emerald-600' :
+      confidenceScore >= 50 ? 'text-amber-600' :
+        'text-red-600';
 
   return (
     <div
-      className={`
-        group relative bg-white rounded-2xl shadow-xl border border-gray-100
-        transition-all duration-300 hover:shadow-2xl ${config.shadowColor}
-        hover:-translate-y-2 cursor-pointer overflow-hidden
-      `}
       onClick={() => onDetailClick(analysis.id)}
+      className="group bg-white rounded-xl border border-surface-200 p-5 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col h-full"
     >
-      {/* グラデーション背景 */}
-      <div className={`absolute top-0 left-0 right-0 h-32 bg-gradient-to-br ${config.bgGradient} opacity-10`}></div>
-
-      {/* カードコンテンツ */}
-      <div className="relative p-6">
-        {/* ヘッダー */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <div className="flex items-center space-x-2 mb-1">
-              <span className="text-2xl font-bold text-gray-900">{analysis.stock.ticker}</span>
-              <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
-                {analysis.stock.market}
-              </span>
-            </div>
-            <h3 className="text-sm text-gray-600 font-medium truncate">{analysis.stock.name}</h3>
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-mono text-sm font-medium text-surface-500 bg-surface-100 px-2 py-0.5 rounded">
+              {stock.ticker}
+            </span>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${getRecommendationColor(recommendation)}`}>
+              {recommendation.toUpperCase()}
+            </span>
           </div>
-          <div className={`flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${config.headerGradient} text-white shadow-lg`}>
-            {config.icon}
-          </div>
+          <h3 className="font-bold text-lg text-surface-900 line-clamp-1 group-hover:text-primary-600 transition-colors">
+            {stock.name}
+          </h3>
         </div>
-
-        {/* 推奨バッジ */}
-        <div className="mb-4">
-          <div className={`inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r ${config.badgeGradient} text-white font-semibold text-sm shadow-lg`}>
-            <span>{config.label}</span>
-          </div>
-        </div>
-
-        {/* 統計情報 */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-3 border border-blue-100">
-            <p className="text-xs text-gray-600 mb-1">現在価格</p>
-            <p className="text-lg font-bold text-gray-900">{priceFormatted}</p>
-          </div>
-          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-3 border border-purple-100">
-            <p className="text-xs text-gray-600 mb-1">信頼度</p>
-            <div className="flex items-center space-x-2">
-              <p className="text-lg font-bold text-gray-900">{analysis.confidenceScore}</p>
-              <div className="flex-1">
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full bg-gradient-to-r ${config.progressGradient} transition-all duration-500`}
-                    style={{ width: `${analysis.confidenceScore}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 財務指標 */}
-        {(analysis.peRatio || analysis.pbRatio || analysis.roe) && (
-          <div className="flex flex-wrap gap-2 mb-4">
-            {analysis.peRatio && (
-              <div className="flex items-center space-x-1 px-3 py-1 bg-gray-50 rounded-lg text-xs">
-                <span className="text-gray-500">PER</span>
-                <span className="font-semibold text-gray-900">{Number(analysis.peRatio).toFixed(1)}</span>
-              </div>
-            )}
-            {analysis.pbRatio && (
-              <div className="flex items-center space-x-1 px-3 py-1 bg-gray-50 rounded-lg text-xs">
-                <span className="text-gray-500">PBR</span>
-                <span className="font-semibold text-gray-900">{Number(analysis.pbRatio).toFixed(2)}</span>
-              </div>
-            )}
-            {analysis.roe && (
-              <div className="flex items-center space-x-1 px-3 py-1 bg-gray-50 rounded-lg text-xs">
-                <span className="text-gray-500">ROE</span>
-                <span className="font-semibold text-gray-900">{Number(analysis.roe).toFixed(1)}%</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 推奨理由（短文） */}
-        <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-          <p className="text-sm text-gray-700 line-clamp-2">{analysis.reasonShort}</p>
-        </div>
-
-        {/* 詳細を見るボタン */}
-        <div className="mt-4 flex items-center justify-center text-sm font-medium text-indigo-600 group-hover:text-indigo-700">
-          <span>詳細を見る</span>
-          <svg className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
+        <div className="text-right">
+          <p className="text-2xl font-bold text-surface-900 tracking-tight">
+            ¥{Number(currentPrice).toLocaleString()}
+          </p>
         </div>
       </div>
 
-      {/* ホバーエフェクト */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-white/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"></div>
+      <p className="text-surface-600 text-sm line-clamp-3 mb-4 flex-grow">
+        {summary}
+      </p>
+
+      <div className="flex items-center justify-between pt-4 border-t border-surface-100 mt-auto">
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-surface-400">Confidence</span>
+          <span className={`font-bold ${scoreColor}`}>
+            {confidenceScore}%
+          </span>
+        </div>
+        <span className="text-primary-600 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+          View Analysis
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </span>
+      </div>
     </div>
   );
 };
