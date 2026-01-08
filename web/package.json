@@ -10,8 +10,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts",
-    "batch:analysis": "python3 scripts/batch_analysis.py"
+    "db:seed": "tsx ../prisma/seed.ts",
+    "batch:analysis": "python3 ../batch/batch_analysis.py"
   },
   "dependencies": {
     "@prisma/client": "^6.2.0",
