@@ -19,7 +19,7 @@ AIによる日本株・米国株の投資分析ツール。シンプルで使い
 - Tailwind CSS v3
 
 **データベース**
-- SQLite (ローカルファイル)
+- PostgreSQL
 - Prisma ORM
 
 **外部API**
@@ -36,6 +36,7 @@ AIによる日本株・米国株の投資分析ツール。シンプルで使い
 
 - Node.js 18以上
 - Python 3.9以上 (バッチ分析用)
+- PostgreSQL 14以上
 - npm または yarn
 
 ### インストール
@@ -48,14 +49,27 @@ cd stock-analyzer
 # 依存関係のインストール
 npm install
 
+# PostgreSQLのインストールと起動
+brew install postgresql@16
+brew services start postgresql@16
+
+# データベースの作成
+createdb stock_analyzer_dev
+
 # 環境変数の設定
 cp .env.example .env
-# .envファイルを編集してOpenAI APIキーを設定
-# OPENAI_API_KEY=your_actual_api_key_here
+# .envファイルを編集
+# 1. DATABASE_URLを設定（usernameを自分のユーザー名に変更）
+#    DATABASE_URL="postgresql://username@localhost:5432/stock_analyzer_dev"
+# 2. OpenAI APIキーを設定
+#    OPENAI_API_KEY=your_actual_api_key_here
 
 # データベースのセットアップ
 npx prisma generate  # Prisma Clientを生成
 npx prisma db push   # データベーススキーマを適用
+
+# Python依存関係のインストール
+pip3 install psycopg2-binary yfinance python-dotenv openai
 
 # （オプション）初期データを投入する場合
 # npm run db:seed
@@ -131,12 +145,23 @@ stock-analyzer/
 
 ## 🗄 データベース
 
-SQLiteを使用しているため、PostgreSQLのセットアップは不要です。
+PostgreSQLを使用しています。
 
-### データベースファイル
-- ファイル: `prisma/dev.db`
-- 初回起動時に自動的に作成されます
-- データは永続化されるため、再起動後もデータは保持されます
+### データベースセットアップ
+```bash
+# PostgreSQLのインストール（Macの場合）
+brew install postgresql@16
+brew services start postgresql@16
+
+# データベースの作成
+createdb stock_analyzer_dev
+
+# .envファイルでDATABASE_URLを設定
+# DATABASE_URL="postgresql://username@localhost:5432/stock_analyzer_dev"
+
+# スキーマを適用
+npx prisma db push
+```
 
 ### よく使うコマンド
 ```bash
@@ -148,12 +173,17 @@ npm run db:generate
 
 # データベーススキーマを同期（スキーマ変更後）
 npm run db:push
+
+# PostgreSQLの起動/停止
+brew services start postgresql@16
+brew services stop postgresql@16
 ```
 
 ### データベースをリセットしたい場合
 ```bash
-# データベースファイルを削除
-rm prisma/dev.db
+# データベースを削除して再作成
+dropdb stock_analyzer_dev
+createdb stock_analyzer_dev
 
 # スキーマを再適用
 npx prisma db push
@@ -164,19 +194,25 @@ npm run db:seed
 
 ## 🐍 バッチ分析
 
-バッチ分析を実行するには、Pythonの依存関係をインストールします：
+バッチ分析は、yfinanceを使って株価データを取得し、OpenAI APIで分析を実行します。
+
+### 実行方法
 
 ```bash
-# Pythonの仮想環境を作成（オプション）
-python3 -m venv venv
-source venv/bin/activate  # Windowsの場合: venv\Scripts\activate
-
-# Python依存関係のインストール
-pip install yfinance psycopg2-binary python-dotenv
+# Python依存関係がインストールされていることを確認
+pip3 install psycopg2-binary yfinance python-dotenv openai
 
 # バッチ分析の実行
 npm run batch:analysis
+
+# または直接Pythonスクリプトを実行
+python3 scripts/batch_analysis.py
 ```
+
+### 注意事項
+- OpenAI APIキーが必要です（`.env`に設定）
+- PostgreSQLが起動している必要があります
+- 銘柄データが`stocks`テーブルに登録されている必要があります
 
 ## 🌐 デプロイ
 

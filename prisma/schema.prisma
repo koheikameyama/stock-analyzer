@@ -1,12 +1,12 @@
 // Prismaスキーマ定義
-// AI株式分析ツールのデータモデル (SQLite版)
+// AI株式分析ツールのデータモデル (PostgreSQL版)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
