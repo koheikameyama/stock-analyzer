@@ -10,6 +10,7 @@ import { FilterBar } from '@/components/FilterBar';
 import { AnalysisTable } from '@/components/AnalysisTable';
 import { AnalysisDetailModal } from '@/components/AnalysisDetailModal';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { AdBanner } from '@/components/AdBanner';
 import { useLatestAnalyses, useBatchJobStatus } from '@/hooks/useAnalyses';
 import type { Recommendation } from '@/types/analysis';
 
@@ -96,6 +97,13 @@ export default function Home() {
           </div>
         </div>
 
+        {/* 広告エリア1: ヘッダー下 */}
+        <AdBanner
+          adSlot="1234567890"
+          adFormat="auto"
+          className="my-4"
+        />
+
         {/* Controls */}
         <div className="flex flex-col sm:flex-row gap-4 justify-end items-start sm:items-center bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
           <FilterBar
@@ -127,6 +135,13 @@ export default function Home() {
         {/* Content */}
         {!isLoadingAnalyses && !analysesError && (
           <>
+            {/* 広告エリア2: テーブル前 */}
+            <AdBanner
+              adSlot="2345678901"
+              adFormat="auto"
+              className="my-6"
+            />
+
             <AnalysisTable
               analyses={analyses}
               onDetailClick={handleDetailClick}
@@ -137,6 +152,15 @@ export default function Home() {
                 <p className="text-surface-600 font-medium mb-1">分析結果が見つかりませんでした</p>
                 <p className="text-surface-400 text-sm">別の条件で検索してみてください</p>
               </div>
+            )}
+
+            {/* 広告エリア3: テーブル後 */}
+            {analyses.length > 0 && (
+              <AdBanner
+                adSlot="3456789012"
+                adFormat="auto"
+                className="my-6"
+              />
             )}
           </>
         )}
