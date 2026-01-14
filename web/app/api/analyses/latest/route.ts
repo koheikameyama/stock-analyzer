@@ -12,7 +12,6 @@ export const runtime = 'nodejs';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const market = searchParams.get('market') as 'JP' | 'US' | null;
     const recommendation = searchParams.get('recommendation') as
       | 'Buy'
       | 'Sell'
@@ -20,16 +19,6 @@ export async function GET(request: NextRequest) {
       | null;
 
     // バリデーション
-    if (market && !['JP', 'US'].includes(market)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'market は JP または US である必要があります',
-        },
-        { status: 400 }
-      );
-    }
-
     if (recommendation && !['Buy', 'Sell', 'Hold'].includes(recommendation)) {
       return NextResponse.json(
         {
@@ -40,9 +29,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // データ取得
+    // データ取得（日本株のみ）
     const analyses = await AnalysisService.getLatestAnalyses(
-      market || undefined,
       recommendation || undefined
     );
 
