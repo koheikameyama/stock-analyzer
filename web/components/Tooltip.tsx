@@ -42,19 +42,19 @@ export const Tooltip: React.FC<TooltipProps> = ({ content, children }) => {
         <>
           {/* オーバーレイ（モバイル用） */}
           <div
-            className="fixed inset-0 z-40 md:hidden"
+            className="fixed inset-0 z-[60] md:hidden"
             onClick={() => setIsVisible(false)}
           />
 
           {/* ツールチップコンテンツ */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full mb-2 z-50 w-64 md:w-72">
+          <div className="absolute left-1/2 transform -translate-x-1/2 top-full mt-2 z-[70] w-64 md:w-72">
             <div className="bg-surface-900 text-white text-sm rounded-lg p-3 shadow-xl border border-surface-700">
               <div className="whitespace-pre-wrap leading-relaxed">
                 {content}
               </div>
               {/* 矢印 */}
-              <div className="absolute left-1/2 transform -translate-x-1/2 top-full">
-                <div className="border-4 border-transparent border-t-surface-900"></div>
+              <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full">
+                <div className="border-4 border-transparent border-b-surface-900"></div>
               </div>
             </div>
           </div>
