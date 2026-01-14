@@ -2,13 +2,17 @@
  * レイアウトコンポーネント（初心者向けデザイン）
  */
 
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
+import { AboutModal } from './AboutModal';
 
 interface LayoutProps {
     children: React.ReactNode;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
+    const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
     return (
         <div className="min-h-screen bg-gradient-to-br from-surface-50 via-blue-50/30 to-indigo-50/30 flex flex-col">
             {/* ヘッダー */}
@@ -28,7 +32,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                 </span>
                             </div>
                         </div>
-                        <nav className="flex items-center gap-4">
+                        <nav className="flex items-center gap-2 sm:gap-4">
+                            <button
+                                onClick={() => setIsAboutModalOpen(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-100 hover:bg-surface-200 text-surface-700 hover:text-surface-900 rounded-lg text-sm font-medium transition-colors border border-surface-200"
+                                aria-label="このサービスについて"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="hidden sm:inline">このサービスについて</span>
+                            </button>
                             <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
                                 🚀 Beta版
                             </div>
@@ -41,6 +55,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
                 {children}
             </main>
+
+            {/* サービス説明モーダル */}
+            <AboutModal isOpen={isAboutModalOpen} onClose={() => setIsAboutModalOpen(false)} />
 
             {/* フッター */}
             <footer className="bg-white/80 backdrop-blur-sm border-t border-surface-200 mt-auto">
