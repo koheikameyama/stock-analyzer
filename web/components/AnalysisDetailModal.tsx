@@ -132,7 +132,10 @@ export const AnalysisDetailModal: React.FC<AnalysisDetailModalProps> = ({
                       <div className="text-xl font-bold text-surface-900">¥{analysis.currentPrice?.toLocaleString() || '不明'}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-surface-500 uppercase tracking-wider font-semibold">信頼度</div>
+                      <div className="text-xs text-surface-500 uppercase tracking-wider font-semibold flex items-center">
+                        信頼度
+                        <InfoTooltip content="AIがこの投資推奨判断にどれだけ自信を持っているかを示すスコアです。財務データの質や市場状況の分析結果を反映しています。80%以上は高い確信度を示します。" />
+                      </div>
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-2 bg-surface-200 rounded-full overflow-hidden">
                           <div

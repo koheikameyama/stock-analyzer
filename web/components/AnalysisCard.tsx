@@ -4,6 +4,7 @@
 
 import React from 'react';
 import type { Analysis } from '../types/analysis';
+import { Tooltip } from './Tooltip';
 
 interface AnalysisCardProps {
   analysis: Analysis;
@@ -148,6 +149,7 @@ export const AnalysisCard: React.FC<AnalysisCardProps> = ({
             <span className={`text-xs font-semibold ${confidenceConfig.textColor}`}>
               {confidenceConfig.label}
             </span>
+            <Tooltip content="AIがこの投資推奨判断にどれだけ自信を持っているかを示すスコアです。財務データの質や市場状況の分析結果を反映しています。80%以上は高い確信度を示します。" />
           </div>
           <span className={`text-lg font-bold ${confidenceConfig.textColor}`}>
             {confidenceScore}%
