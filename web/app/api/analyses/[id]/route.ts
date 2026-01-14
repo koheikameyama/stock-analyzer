@@ -11,10 +11,11 @@ export const runtime = 'nodejs';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const analysisId = params.id;
+    const { id } = await params;
+    const analysisId = id;
 
     // データ取得
     const analysis = await AnalysisService.getAnalysisDetail(analysisId);
