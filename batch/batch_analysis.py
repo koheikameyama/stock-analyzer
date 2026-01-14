@@ -124,10 +124,8 @@ class StockQueue:
 usage_tracker = APIUsageTracker()
 
 # 並列処理設定
-MAX_WORKERS = 5  # 同時実行する最大ワーカー数
-
-# スレッドセーフなロック
-print_lock = threading.Lock()
+# 並列処理設定
+MAX_WORKERS = 1  # GitHub Actionsでのレート制限回避のため1ワーカーに設定
 
 
 class StockData:
@@ -146,70 +144,81 @@ class StockData:
         self.error: Optional[str] = None
 
 
-def fetch_stock_data(ticker: str, market: str) -> StockData:
+def fetch_stock_data(ticker: str, market: str, max_retries: int = 3) -> StockData:
     """
-    yfinanceで株価データを取得
+    yfinanceで株価データを取得（リトライあり）
 
     Args:
         ticker: ティッカーシンボル
         market: 市場（JP/US）
+        max_retries: 最大リトライ回数
 
     Returns:
         StockData: 取得した株価データ
     """
     stock_data = StockData(ticker, market)
 
-    try:
-        # 日本株の場合、.Tサフィックスを追加（既に.Tがある場合は追加しない）
-        if market == "JP" and not ticker.endswith(".T"):
-            yahoo_ticker = f"{ticker}.T"
-        else:
-            yahoo_ticker = ticker
+    # 日本株の場合、.Tサフィックスを追加
+    if market == "JP" and not ticker.endswith(".T"):
+        yahoo_ticker = f"{ticker}.T"
+    else:
+        yahoo_ticker = ticker
 
-        # yfinanceでデータ取得
-        stock = yf.Ticker(yahoo_ticker)
-        info = stock.info
-
-        # 基本情報
-        stock_data.company_name = info.get('longName', ticker)
-        stock_data.sector = info.get('sector', 'Unknown')
-
-        # 株価データ
-        stock_data.current_price = Decimal(str(info.get('currentPrice', 0)))
-
-        # 財務指標
-        stock_data.pe_ratio = Decimal(str(info.get('trailingPE', 0))) if info.get('trailingPE') else None
-        stock_data.pb_ratio = Decimal(str(info.get('priceToBook', 0))) if info.get('priceToBook') else None
-        stock_data.roe = Decimal(str(info.get('returnOnEquity', 0) * 100)) if info.get('returnOnEquity') else None
-        stock_data.dividend_yield = Decimal(str(info.get('dividendYield', 0) * 100)) if info.get('dividendYield') else None
-
-        # 過去30日の株価履歴を取得
+    for attempt in range(max_retries + 1):
         try:
-            hist = stock.history(period="1mo")  # 過去1ヶ月
-            if not hist.empty:
-                for idx in range(len(hist)):
-                    date = hist.index[idx]
-                    row = hist.iloc[idx]
-                    stock_data.price_history.append({
-                        'date': date.strftime('%Y-%m-%d'),
-                        'open': float(row['Open']),
-                        'high': float(row['High']),
-                        'low': float(row['Low']),
-                        'close': float(row['Close']),
-                        'volume': int(row['Volume'])
-                    })
+            # yfinanceでデータ取得
+            stock = yf.Ticker(yahoo_ticker)
+            info = stock.info
+
+            # 基本情報
+            stock_data.company_name = info.get('longName', ticker)
+            stock_data.sector = info.get('sector', 'Unknown')
+
+            # 株価データ
+            stock_data.current_price = Decimal(str(info.get('currentPrice', 0)))
+
+            # 財務指標
+            stock_data.pe_ratio = Decimal(str(info.get('trailingPE', 0))) if info.get('trailingPE') else None
+            stock_data.pb_ratio = Decimal(str(info.get('priceToBook', 0))) if info.get('priceToBook') else None
+            stock_data.roe = Decimal(str(info.get('returnOnEquity', 0) * 100)) if info.get('returnOnEquity') else None
+            stock_data.dividend_yield = Decimal(str(info.get('dividendYield', 0) * 100)) if info.get('dividendYield') else None
+
+            # 過去30日の株価履歴を取得
+            try:
+                hist = stock.history(period="1mo")
+                if not hist.empty:
+                    for idx in range(len(hist)):
+                        date = hist.index[idx]
+                        row = hist.iloc[idx]
+                        stock_data.price_history.append({
+                            'date': date.strftime('%Y-%m-%d'),
+                            'open': float(row['Open']),
+                            'high': float(row['High']),
+                            'low': float(row['Low']),
+                            'close': float(row['Close']),
+                            'volume': int(row['Volume'])
+                        })
+            except Exception:
+                pass  # 履歴取得失敗は致命的ではないので続行
+
+            # 成功したらループを抜ける
+            time.sleep(2)  # 成功後も少し待機
+            return stock_data
+
         except Exception as e:
-            pass  # 株価履歴取得失敗は警告のみ
+            error_msg = str(e)
+            
+            # リトライ上限到達
+            if attempt == max_retries:
+                stock_data.error = f"データ取得失敗: {error_msg}"
+                return stock_data
 
-        # レート制限対策: リクエスト間に1秒待機
-        time.sleep(1)
-
-        return stock_data
-
-    except Exception as e:
-        error_msg = str(e)
-        stock_data.error = error_msg
-        return stock_data
+            # 429エラーなどの場合は長めに待機
+            wait_time = (attempt + 1) * 5  # 5秒, 10秒, 15秒...
+            print(f"⚠️ {ticker}: データ取得エラー (リトライ {attempt+1}/{max_retries} - {wait_time}秒待機): {error_msg}")
+            time.sleep(wait_time)
+    
+    return stock_data
 
 
 def analyze_with_openai(stock_data: StockData, max_retries: int = 2) -> Dict[str, Any]:
