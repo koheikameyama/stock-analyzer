@@ -2,3 +2,4 @@ psycopg2-binary==2.9.9
 yfinance==0.2.38
 openai==1.54.5
 python-dotenv==1.0.1
+httpx==0.27.2
