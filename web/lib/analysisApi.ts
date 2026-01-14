@@ -17,9 +17,9 @@ import type {
   BatchJobStatusResponse,
 } from '../types/analysis';
 
-// ベースURL（環境変数から取得、デフォルトはlocalhost）
+// ベースURL（環境変数から取得、デフォルトは/api）
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api';
+  process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 
 // Axiosインスタンスの作成
 const apiClient = axios.create({
