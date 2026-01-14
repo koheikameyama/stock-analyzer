@@ -5,8 +5,13 @@
 外部データソース（ニュース、SNS、スクレイピング）を活用し、より精度の高い株式分析を実現するシステムの設計ドキュメント。
 
 **作成日**: 2026-01-14
-**バージョン**: 1.0
+**更新日**: 2026-01-14
+**バージョン**: 1.1
 **ステータス**: 設計段階
+
+**変更履歴**:
+- v1.1 (2026-01-14): Mastraハイブリッド構成戦略を追加
+- v1.0 (2026-01-14): 初版作成
 
 ---
 
@@ -105,6 +110,287 @@
 - **取得データ**: 銘柄関連ツイート、センチメント
 - **更新頻度**: 1日1回（コスト考慮）
 - **用途**: リアルタイム市場の雰囲気（フェーズ3）
+
+### 2.3 Mastraハイブリッド構成戦略
+
+#### 2.3.1 Mastraとは
+
+**Mastra**は、GatsbyチームによるTypeScript/JavaScript用のAIエージェントフレームワークです。
+
+- 🎯 **エージェント・ワークフロー管理**に特化
+- 🧠 **メモリシステム**が強力（LongMemEvalで80%精度）
+- 🔄 **Human-in-the-loop**（一時停止・承認・再開機能）
+- 📊 40以上のLLMプロバイダー統合（OpenAI、Anthropic、Geminiなど）
+- 🔓 オープンソース（Apache 2.0ライセンス）
+- 🚀 2024年創設、Y Combinator支援
+
+公式サイト: https://mastra.ai/
+GitHub: https://github.com/mastra-ai/mastra
+
+#### 2.3.2 ハイブリッド構成アーキテクチャ
+
+**Python（バッチ処理）とMastra（エージェント）の組み合わせ**を採用します。
+
+```
+┌─────────────────────────────────────────────────────────┐
+│           Python バッチ処理レイヤー                       │
+│           (フェーズ1-2で実装)                            │
+├─────────────────────────────────────────────────────────┤
+│  • データ収集（スクレイピング）                           │
+│  • センチメント分析（日本語BERT - Hugging Face）         │
+│  • テクニカル指標計算（pandas/numpy）                     │
+│  • 基礎的なAI分析（GPT-4o mini）                         │
+└────────────┬────────────────────────────────────────────┘
+             │ 分析結果を保存
+             ▼
+┌─────────────────────────────────────────────────────────┐
+│               PostgreSQL データベース                      │
+│  • Stock, Analysis, PriceHistory                        │
+│  • NewsData, SentimentData, TechnicalIndicator         │
+└────────────┬────────────────────────────────────────────┘
+             │ データ取得
+             ▼
+┌─────────────────────────────────────────────────────────┐
+│         Next.js + Mastra エージェントレイヤー             │
+│         (フェーズ3で追加)                                │
+├─────────────────────────────────────────────────────────┤
+│  • 投資アドバイザーエージェント                           │
+│  • ポートフォリオ最適化エージェント                        │
+│  • リアルタイムQ&Aエージェント                            │
+│  • カスタム分析ワークフロー                               │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### 2.3.3 Python vs Mastra 使い分け指針
+
+| 機能領域 | 使用技術 | 理由 |
+|---------|---------|------|
+| **データ収集** | Python | `beautifulsoup4`、`requests`が成熟 |
+| **スクレイピング** | Python | ライブラリが豊富、実装が容易 |
+| **センチメント分析** | Python | 日本語BERTモデルの精度が高い |
+| **テクニカル計算** | Python | `pandas`、`numpy`の計算速度 |
+| **バッチ分析** | Python | 既存のエコシステムを活用 |
+| **定期実行** | Python | GitHub Actionsでシンプルに実装 |
+| | | |
+| **対話型アドバイス** | Mastra | エージェントの自律判断が得意 |
+| **ユーザーQ&A** | Mastra | 会話フローの管理が容易 |
+| **カスタム分析** | Mastra | 動的なワークフロー構築 |
+| **リアルタイム処理** | Mastra | Next.jsとの統合が簡単 |
+| **複雑な意思決定** | Mastra | マルチエージェント協調 |
+
+#### 2.3.4 Mastraの利点
+
+**✅ 技術的メリット**
+- TypeScript統一（Next.jsプロジェクトとシームレス）
+- エージェントの自律性（必要なデータを動的に判断）
+- ワークフロー管理が簡単（グラフベース）
+- Human-in-the-loopが標準搭載
+- 40以上のLLMプロバイダー対応
+
+**✅ ユーザー体験向上**
+- リアルタイム対話型分析
+- ユーザー個別の投資スタイルに対応
+- 「なぜこの推奨なのか」を深掘り可能
+- ポートフォリオ最適化の提案
+
+#### 2.3.5 Python維持の理由
+
+**✅ Pythonエコシステムの強み**
+- データ処理：`pandas`、`numpy`の計算速度
+- スクレイピング：`beautifulsoup4`、`playwright`の成熟度
+- NLP：日本語BERTモデルの選択肢が豊富
+- 機械学習：`scikit-learn`、`transformers`
+- テクニカル分析：専門ライブラリ（`ta`など）
+
+**❌ TypeScript/JavaScriptの弱み**
+- 日本語NLP対応が限定的
+- 数値計算のパフォーマンス不足
+- データ分析ライブラリの成熟度が低い
+
+#### 2.3.6 フェーズ別実装戦略
+
+**フェーズ1-2: Python基盤構築**（4-5週間）
+```
+目標: データ収集・分析の基礎を確立
+
+✓ Yahoo! Finance、企業IR、NewsAPIからデータ収集
+✓ 日本語BERTでセンチメント分析
+✓ テクニカル指標計算（RSI、MACD、ボリンジャーバンド）
+✓ 統合スコアリング（財務40%、センチメント30%、テクニカル20%、ニュース10%）
+✓ 基礎的なAI分析レポート生成
+
+→ この時点で既存サービスが大幅に強化される
+```
+
+**フェーズ3: Mastraエージェント追加**（3-4週間）
+```
+目標: 対話型・パーソナライズ機能の実装
+
+✓ 投資アドバイザーエージェント
+  - ユーザー質問への回答
+  - 分析結果の深掘り
+  - 比較分析（銘柄A vs 銘柄B）
+
+✓ ポートフォリオ最適化エージェント
+  - リスク許容度に基づく推奨
+  - 分散投資の提案
+  - リバランス提案
+
+✓ カスタム分析ワークフロー
+  - ユーザー指定条件での動的スクリーニング
+  - 特定セクターの深掘り分析
+
+→ サービスが対話型AIアドバイザーに進化
+```
+
+#### 2.3.7 実装例
+
+**Python側（フェーズ1-2）**
+```python
+# batch/analyzers/enhanced_stock_analyzer.py
+class EnhancedStockAnalyzer:
+    def analyze(self, ticker: str):
+        # 1. データベースから最新情報取得
+        stock_data = self.get_stock_data(ticker)
+        sentiment = self.get_sentiment_data(ticker)
+        technical = self.get_technical_data(ticker)
+
+        # 2. スコアリング
+        scores = self.calculate_composite_score(
+            stock_data, sentiment, technical
+        )
+
+        # 3. AI分析
+        analysis = self.generate_ai_analysis(scores)
+
+        # 4. データベース保存
+        self.save_analysis(analysis)
+```
+
+**Mastra側（フェーズ3）**
+```typescript
+// web/lib/mastra/agents/investmentAdvisor.ts
+import { Agent } from '@mastra/core';
+import { openai } from '@mastra/core/llm';
+
+export const investmentAdvisor = new Agent({
+  name: 'investment-advisor',
+  model: openai('gpt-4o-mini'),
+  instructions: `
+    あなたは日本株の投資アドバイザーです。
+    データベースの分析結果を参照し、
+    ユーザーの質問に初心者にもわかりやすく答えてください。
+  `,
+  tools: [
+    // ツール1: 分析結果取得
+    {
+      name: 'get-stock-analysis',
+      description: '銘柄の最新分析結果を取得',
+      parameters: {
+        ticker: { type: 'string', description: '銘柄コード' }
+      },
+      execute: async ({ ticker }) => {
+        const analysis = await prisma.analysis.findFirst({
+          where: { stock: { ticker } },
+          include: { stock: true },
+          orderBy: { analyzedAt: 'desc' }
+        });
+        return analysis;
+      }
+    },
+
+    // ツール2: センチメントトレンド取得
+    {
+      name: 'get-sentiment-trend',
+      description: '過去のセンチメント推移を取得',
+      parameters: {
+        ticker: { type: 'string' },
+        days: { type: 'number', default: 30 }
+      },
+      execute: async ({ ticker, days }) => {
+        const trend = await prisma.sentimentData.findMany({
+          where: {
+            stock: { ticker },
+            date: { gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) }
+          },
+          orderBy: { date: 'desc' }
+        });
+        return trend;
+      }
+    },
+
+    // ツール3: 類似銘柄検索
+    {
+      name: 'find-similar-stocks',
+      description: '似た特性を持つ銘柄を検索',
+      parameters: {
+        ticker: { type: 'string' },
+        sector: { type: 'string' }
+      },
+      execute: async ({ ticker, sector }) => {
+        const similar = await prisma.stock.findMany({
+          where: { sector },
+          include: {
+            analyses: {
+              orderBy: { analyzedAt: 'desc' },
+              take: 1
+            }
+          }
+        });
+        return similar;
+      }
+    }
+  ]
+});
+
+// 使用例
+const response = await investmentAdvisor.run(
+  "トヨタ自動車とホンダ、どちらが今買いですか？理由も教えてください。"
+);
+```
+
+**Next.js API Route統合**
+```typescript
+// web/app/api/ai-advisor/route.ts
+import { investmentAdvisor } from '@/lib/mastra/agents/investmentAdvisor';
+
+export async function POST(req: Request) {
+  const { question, userId } = await req.json();
+
+  // エージェント実行
+  const response = await investmentAdvisor.run(question, {
+    context: {
+      userId,
+      timestamp: new Date()
+    }
+  });
+
+  return Response.json({
+    answer: response.text,
+    sources: response.toolCalls
+  });
+}
+```
+
+#### 2.3.8 コスト影響
+
+**追加コスト（フェーズ3）**
+
+| 項目 | 詳細 | 月額コスト |
+|------|------|-----------|
+| Mastraフレームワーク | オープンソース | ¥0 |
+| 追加のOpenAI API使用 | ユーザーQ&A（想定: 100会話/日） | ¥1,000〜¥3,000 |
+| Vercelサーバーレス | Next.js関数実行時間 | ¥0（無料枠内） |
+
+**合計**: フェーズ3追加で約 ¥1,000〜¥3,000/月
+
+#### 2.3.9 この戦略のメリット
+
+✅ **リスク分散**: Pythonで安定した基盤を構築してから拡張
+✅ **段階的投資**: 効果を確認しながら機能追加
+✅ **両方の強みを活用**: データ処理はPython、UXはMastra
+✅ **コスト最適化**: 必要な機能だけを追加
+✅ **技術的柔軟性**: 将来的にどちらかに寄せることも可能
 
 ---
 
@@ -758,6 +1044,27 @@ ROE: {stock_data.get('roe', 'N/A')}%
 | AI API | OpenAI GPT-4o mini | 既存 |
 | モニタリング | Sentry | エラー追跡 |
 
+### 6.4 AIエージェント（フェーズ3）
+
+| 用途 | ライブラリ/サービス | バージョン | 理由 |
+|------|-------------------|-----------|------|
+| エージェントフレームワーク | `@mastra/core` | 最新 | TypeScript統合、エージェント管理 |
+| LLM統合 | Mastra LLM Providers | 最新 | 40以上のプロバイダー対応 |
+| ワークフロー管理 | Mastra Workflows | 最新 | グラフベースのワークフロー |
+| メモリ管理 | Mastra Memory | 最新 | 会話履歴、コンテキスト管理 |
+| フロントエンド統合 | Next.js Server Actions | - | シームレスな統合 |
+
+**インストール**
+```bash
+npm install @mastra/core
+```
+
+**主な依存関係**
+- TypeScript 5.x
+- Next.js 15.x
+- React 18.x
+- Prisma（既存のDB接続を利用）
+
 ---
 
 ## 7. スケジューリング戦略
@@ -922,19 +1229,65 @@ jobs:
 
 ---
 
-### フェーズ3: 高度化（3-4週間）
+### フェーズ3: Mastraエージェント導入（3-4週間）
 
-**目標**: SNS統合とリアルタイム分析
+**目標**: 対話型AIアドバイザー機能の実装
 
-- [ ] X API統合（有料プラン契約）
-- [ ] Twitter Collector 実装
-- [ ] ソーシャルセンチメント分析
-- [ ] リアルタイム更新機能
-- [ ] アラート機能（急激な変化検知）
-- [ ] ダッシュボード強化
+**3.1 Mastraセットアップ**
+- [ ] Mastraフレームワークのインストール
+  ```bash
+  npm install @mastra/core
+  ```
+- [ ] Mastra設定ファイル作成（`web/lib/mastra/config.ts`）
+- [ ] エージェント共通ツール実装
+  - [ ] データベース接続ツール
+  - [ ] 分析結果取得ツール
+  - [ ] センチメントトレンド取得ツール
+
+**3.2 投資アドバイザーエージェント**
+- [ ] エージェント定義（`web/lib/mastra/agents/investmentAdvisor.ts`）
+- [ ] ツール実装
+  - [ ] `get-stock-analysis`: 最新分析結果取得
+  - [ ] `get-sentiment-trend`: センチメント推移取得
+  - [ ] `find-similar-stocks`: 類似銘柄検索
+  - [ ] `compare-stocks`: 銘柄比較分析
+- [ ] API Route実装（`web/app/api/ai-advisor/route.ts`）
+- [ ] フロントエンドチャットUI作成
+- [ ] ユニットテスト作成
+
+**3.3 ポートフォリオ最適化エージェント**
+- [ ] エージェント定義（`web/lib/mastra/agents/portfolioOptimizer.ts`）
+- [ ] ツール実装
+  - [ ] `calculate-portfolio-risk`: リスク計算
+  - [ ] `suggest-diversification`: 分散投資提案
+  - [ ] `rebalance-recommendation`: リバランス提案
+- [ ] ユーザーポートフォリオデータモデル追加
+- [ ] API Route実装
+- [ ] フロントエンドポートフォリオ画面作成
+
+**3.4 カスタム分析ワークフロー**
+- [ ] ワークフロー定義（`web/lib/mastra/workflows/customAnalysis.ts`）
+- [ ] 動的スクリーニング機能
+- [ ] セクター深掘り分析機能
+- [ ] カスタム条件設定UI
+
+**3.5 統合とテスト**
+- [ ] エージェント間の連携テスト
 - [ ] パフォーマンス最適化
+- [ ] エラーハンドリング強化
+- [ ] ログ・モニタリング設定
+- [ ] ユーザー受け入れテスト（UAT）
 
-**成果物**: リアルタイム市場センチメント分析
+**3.6 （オプション）SNS統合**
+- [ ] X API統合検討（コストと効果を評価）
+- [ ] Twitter Collector 実装（必要に応じて）
+- [ ] ソーシャルセンチメント分析
+
+**成果物**:
+- 対話型AIアドバイザー機能
+- ポートフォリオ最適化機能
+- カスタム分析ワークフロー
+- ユーザーエンゲージメント大幅向上
 
 ---
 
@@ -981,27 +1334,70 @@ jobs:
 
 ## 12. まとめ
 
+### 採用戦略: Mastraハイブリッド構成
+
+本設計では、**Python（バッチ処理）+ Mastra（エージェント）のハイブリッド構成**を採用します。
+
+```
+フェーズ1-2: Python基盤（4-5週間）
+  ↓ 安定した基盤を構築
+フェーズ3: Mastra追加（3-4週間）
+  ↓ 対話型機能を追加
+完成: ハイブリッドシステム
+```
+
 ### 優先実装事項
 
+**フェーズ1-2（Python基盤）**
 1. **Yahoo! Finance + 企業IR** のスクレイピング（無料・安全）
-2. **センチメント分析**（Hugging Face 日本語モデル）
-3. **テクニカル指標**（RSI, MACDなど）
-4. **統合スコアリング**（既存分析との融合）
+2. **センチメント分析**（Hugging Face 日本語BERT）
+3. **テクニカル指標**（RSI, MACD, ボリンジャーバンド）
+4. **統合スコアリング**（財務40%、センチメント30%、テクニカル20%、ニュース10%）
+
+**フェーズ3（Mastra統合）**
+5. **投資アドバイザーエージェント**（対話型Q&A）
+6. **ポートフォリオ最適化エージェント**（リスク分析、分散提案）
+7. **カスタム分析ワークフロー**（動的スクリーニング）
+
+### この戦略の利点
+
+✅ **リスク分散**: Pythonで安定した基盤を構築してから拡張
+✅ **段階的投資**: 効果を確認しながら機能追加
+✅ **両方の強みを活用**: データ処理はPython、UXはMastra
+✅ **コスト最適化**: 必要な機能だけを追加（月額¥3,000→¥6,000程度）
+✅ **技術的柔軟性**: 将来的にどちらかに寄せることも可能
 
 ### 後回し・検討事項
 
-- X API統合（コスト高、フェーズ3）
-- 日経電子版（利用規約要確認）
-- リアルタイム更新（インフラコスト）
+- **X API統合**（コスト高、フェーズ3でオプション）
+- **日経電子版**（利用規約要確認）
+- **SNSリアルタイム分析**（インフラコスト、効果を見極めてから）
 
 ### 推奨アプローチ
 
 **段階的実装** を推奨します：
 
-1. まずフェーズ1で**ニュース収集基盤**を構築
+1. まず**フェーズ1-2でPython基盤**を構築（4-5週間）
+   - データ収集・センチメント分析・テクニカル計算
+   - この時点で既存サービスが大幅に強化される
 2. 実際にデータを見て**精度を検証**
-3. 効果があれば順次機能拡張
+3. 効果が確認できたら**フェーズ3でMastra追加**（3-4週間）
+   - 対話型AIアドバイザー機能
+   - サービスが対話型に進化、ユーザーエンゲージメント向上
 4. ユーザーフィードバックで優先順位調整
+
+### 期待される成果
+
+**フェーズ1-2完了時**:
+- 分析精度: 現在比+20%向上
+- データソース: 3倍に拡大（財務 → 財務+ニュース+テクニカル）
+- 分析の深さ: 定量的スコアリング導入
+
+**フェーズ3完了時**:
+- ユーザーエンゲージメント: +50%
+- 平均滞在時間: 2倍
+- 新機能: 対話型アドバイザー、ポートフォリオ最適化
+- サービス差別化: 競合にない対話型機能
 
 ---
 
@@ -1013,15 +1409,25 @@ jobs:
 - [Finnhub](https://finnhub.io/docs/api)
 - [X API v2](https://developer.twitter.com/en/docs/twitter-api)
 
-### ライブラリ
+### Python ライブラリ
 - [Hugging Face Transformers](https://huggingface.co/docs/transformers/)
 - [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)
 - [Playwright](https://playwright.dev/python/)
 - [TA-Lib](https://ta-lib.github.io/ta-lib-python/)
+- [pandas](https://pandas.pydata.org/docs/)
+- [numpy](https://numpy.org/doc/)
+
+### Mastra フレームワーク
+- [Mastra 公式サイト](https://mastra.ai/)
+- [Mastra GitHub](https://github.com/mastra-ai/mastra)
+- [Mastra ドキュメント](https://mastra.ai/docs)
+- [Mastra エージェントガイド](https://mastra.ai/docs/agents/overview)
+- [Mastra ワークショップ](https://mastra.ai/workshops)
 
 ### 学習リソース
 - [日本語BERTモデル一覧](https://huggingface.co/models?language=ja&pipeline_tag=sentiment-analysis)
 - [テクニカル分析入門](https://www.investopedia.com/technical-analysis-4689657)
+- [AIエージェント設計パターン](https://www.anthropic.com/research/building-effective-agents)
 
 ---
 
