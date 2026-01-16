@@ -47,9 +47,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                 </svg>
                                 <span className="hidden sm:inline">このサービスについて</span>
                             </button>
-                            <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
-                                🚀 Beta版
-                            </div>
                         </nav>
                     </div>
                 </div>
