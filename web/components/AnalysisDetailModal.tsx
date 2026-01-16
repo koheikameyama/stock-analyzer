@@ -175,6 +175,11 @@ export const AnalysisDetailModal: React.FC<AnalysisDetailModalProps> = ({
                       <div className="text-lg font-semibold text-surface-900">
                         {analysis.peRatio ? Number(analysis.peRatio).toFixed(2) : 'N/A'}
                       </div>
+                      {analysis.peRatio && (
+                        <div className="text-[10px] text-surface-400 mt-0.5">
+                          実際の値: {analysis.peRatio}
+                        </div>
+                      )}
                     </div>
                     <div className="p-2">
                       <div className="text-xs text-surface-500 flex items-center">
@@ -184,6 +189,11 @@ export const AnalysisDetailModal: React.FC<AnalysisDetailModalProps> = ({
                       <div className="text-lg font-semibold text-surface-900">
                         {analysis.pbRatio ? Number(analysis.pbRatio).toFixed(2) : 'N/A'}
                       </div>
+                      {analysis.pbRatio && (
+                        <div className="text-[10px] text-surface-400 mt-0.5">
+                          実際の値: {analysis.pbRatio}
+                        </div>
+                      )}
                     </div>
                     <div className="p-2">
                       <div className="text-xs text-surface-500 flex items-center">
@@ -193,6 +203,11 @@ export const AnalysisDetailModal: React.FC<AnalysisDetailModalProps> = ({
                       <div className="text-lg font-semibold text-surface-900">
                         {analysis.roe ? `${Number(analysis.roe).toFixed(2)}%` : 'N/A'}
                       </div>
+                      {analysis.roe && (
+                        <div className="text-[10px] text-surface-400 mt-0.5">
+                          実際の値: {analysis.roe}%
+                        </div>
+                      )}
                     </div>
                     <div className="p-2">
                       <div className="text-xs text-surface-500 flex items-center">
@@ -202,6 +217,11 @@ export const AnalysisDetailModal: React.FC<AnalysisDetailModalProps> = ({
                       <div className="text-lg font-semibold text-surface-900">
                         {analysis.dividendYield ? `${(Number(analysis.dividendYield) / 100).toFixed(2)}%` : 'N/A'}
                       </div>
+                      {analysis.dividendYield && (
+                        <div className="text-[10px] text-surface-400 mt-0.5">
+                          実際の値: {(Number(analysis.dividendYield) / 100)}%
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
