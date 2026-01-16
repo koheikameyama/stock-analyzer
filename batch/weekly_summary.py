@@ -108,7 +108,7 @@ def send_to_slack(webhook_url: str, message: str):
         message: 送信するメッセージ
     """
     payload = {
-        "text": "<!here> 📢 *週次X投稿テンプレート*\n\n以下をコピーしてXに投稿してください👇\n\n```\n" + message + "\n```",
+        "text": "<!channel> 📢 *週次X投稿テンプレート*\n\n以下をコピーしてXに投稿してください👇\n\n```\n" + message + "\n```",
         "username": "Stock Analyzer Bot",
         "icon_emoji": ":chart_with_upwards_trend:"
     }
