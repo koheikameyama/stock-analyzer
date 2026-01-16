@@ -20,8 +20,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white shadow-md">
-                                <span className="text-xl">📊</span>
+                            <div className="w-10 h-10 flex items-center justify-center">
+                                <img
+                                    src="/images/logo.png"
+                                    alt="Stock Analyzer"
+                                    className="w-full h-full object-contain"
+                                />
                             </div>
                             <div>
                                 <span className="font-display font-bold text-xl text-surface-900 tracking-tight block">
