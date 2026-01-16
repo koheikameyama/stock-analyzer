@@ -40,7 +40,7 @@ export const AnalysisDetailModal: React.FC<AnalysisDetailModalProps> = ({
 }) => {
   const { data: analysis, isLoading, error } = useAnalysisDetail(analysisId, !!analysisId);
 
-  // ESCキーで閉じる
+  // ESCキーで閉じる & 背景スクロール防止
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -48,9 +48,17 @@ export const AnalysisDetailModal: React.FC<AnalysisDetailModalProps> = ({
       }
     };
 
+    // モーダル表示時は背景のスクロールを無効化
+    if (analysisId) {
+      document.body.style.overflow = 'hidden';
+    }
+
     document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [onClose, analysisId]);
 
   if (!analysisId) return null;
 
