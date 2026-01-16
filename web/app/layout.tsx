@@ -34,22 +34,13 @@ export const metadata: Metadata = {
     siteName: 'AI株式分析ツール',
     title: 'AI株式分析ツール - 日本株の投資判断を毎日AIが分析',
     description: 'AIが日本株の主要15銘柄を毎日自動分析。投資判断（Buy/Hold/Sell）を詳細な根拠付きで提供します。',
-    images: [
-      {
-        url: 'https://stock-analyzer.jp/images/logo.png',
-        width: 512,
-        height: 512,
-        alt: 'AI株式分析ツール',
-      },
-    ],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     site: '@stockAnalyzerJP',
     creator: '@stockAnalyzerJP',
     title: 'AI株式分析ツール - 日本株の投資判断を毎日AIが分析',
     description: 'AIが日本株の主要15銘柄を毎日自動分析。投資判断を詳細な根拠付きで提供します。',
-    images: ['https://stock-analyzer.jp/images/logo.png'],
   },
   robots: {
     index: true,
