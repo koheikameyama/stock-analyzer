@@ -243,7 +243,7 @@ def analyze_with_openai(stock_data: StockData, max_retries: int = 2) -> Dict[str
 - PER: {stock_data.pe_ratio if stock_data.pe_ratio else 'N/A'}
 - PBR: {stock_data.pb_ratio if stock_data.pb_ratio else 'N/A'}
 - ROE: {stock_data.roe if stock_data.roe else 'N/A'}%
-- 配当利回り: {stock_data.dividend_yield if stock_data.dividend_yield else 'N/A'}%
+- 配当利回り: {float(stock_data.dividend_yield) / 100 if stock_data.dividend_yield else 'N/A'}%
 
 以下のJSON形式で回答してください：
 {{
