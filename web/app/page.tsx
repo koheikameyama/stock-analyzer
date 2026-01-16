@@ -88,7 +88,14 @@ export default function Home() {
             {analysesData?.lastUpdateDate && (
               <div className="flex items-center gap-2 text-surface-500 bg-white px-3 py-1.5 rounded-full border border-surface-200 shadow-sm">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                最終更新: {new Date(analysesData.lastUpdateDate).toLocaleDateString('ja-JP')}
+                最終更新: {new Date(analysesData.lastUpdateDate).toLocaleString('ja-JP', {
+                  timeZone: 'Asia/Tokyo',
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
               </div>
             )}
             {batchJobStatus && (
