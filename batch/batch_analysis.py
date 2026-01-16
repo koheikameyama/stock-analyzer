@@ -15,6 +15,7 @@ from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 import json
+from zoneinfo import ZoneInfo
 
 import yfinance as yf
 import psycopg2
@@ -310,7 +311,8 @@ def save_analysis_to_db(conn, stock_id: str, stock_data: StockData, analysis: Di
     """
     try:
         with conn.cursor() as cur:
-            now = datetime.now()
+            # 日本時間で現在時刻を取得
+            now = datetime.now(ZoneInfo("Asia/Tokyo"))
 
             # 既存の分析データを確認
             cur.execute("""
@@ -465,8 +467,8 @@ def process_single_stock(stock: Dict[str, Any]) -> bool:
         # データベース接続
         conn = psycopg2.connect(DATABASE_URL)
 
-        # 今日の日付を取得（日付のみ、時刻は00:00:00）
-        today = datetime.now().date()
+        # 今日の日付を取得（日本時間、日付のみ）
+        today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
 
         # 今日の分析データが既に存在するかチェック
         with conn.cursor() as cur:
@@ -537,7 +539,8 @@ def log_batch_job(conn, start_time: datetime, total_stocks: int, success_count: 
         with conn.cursor() as cur:
             # UUID生成
             log_id = str(uuid.uuid4())
-            now = datetime.now()
+            # 日本時間で現在時刻を取得
+            now = datetime.now(ZoneInfo("Asia/Tokyo"))
 
             cur.execute("""
                 INSERT INTO batch_job_logs (
