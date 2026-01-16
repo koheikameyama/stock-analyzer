@@ -88,6 +88,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                             >
                                 利用規約
                             </a>
+                            <span className="text-surface-300">|</span>
+                            <a
+                                href="https://forms.gle/irNjkWEqAfvuVrip9"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-surface-600 hover:text-surface-900 transition-colors"
+                            >
+                                フィードバック
+                            </a>
                         </nav>
 
                         <p className="text-xs text-surface-400">
