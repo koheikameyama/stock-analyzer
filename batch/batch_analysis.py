@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import uuid
+import argparse
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Dict, Any, List
@@ -450,12 +451,13 @@ def save_price_history_to_db(conn, stock_id: str, stock_data: StockData) -> bool
         return False
 
 
-def process_single_stock(stock: Dict[str, Any]) -> bool:
+def process_single_stock(stock: Dict[str, Any], force: bool = False) -> bool:
     """
     単一銘柄を処理
 
     Args:
         stock: 銘柄データ
+        force: 既存データを無視して強制的に再実行
 
     Returns:
         bool: 処理が成功したかどうか
@@ -470,20 +472,24 @@ def process_single_stock(stock: Dict[str, Any]) -> bool:
         # 今日の日付を取得（日本時間、日付のみ）
         today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
 
-        # 今日の分析データが既に存在するかチェック
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT id FROM analyses
-                WHERE "stockId" = %s
-                AND DATE("analysisDate") = %s
-            """, (stock['id'], today))
-            existing_today = cur.fetchone()
+        # 今日の分析データが既に存在するかチェック（forceフラグがfalseの場合のみ）
+        if not force:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id FROM analyses
+                    WHERE "stockId" = %s
+                    AND DATE("analysisDate") = %s
+                """, (stock['id'], today))
+                existing_today = cur.fetchone()
 
-        if existing_today:
-            print(f"⏭️  {ticker}: 本日分の分析済み（スキップ）")
-            return True
+            if existing_today:
+                print(f"⏭️  {ticker}: 本日分の分析済み（スキップ）")
+                return True
 
-        print(f"🔄 {ticker}: 処理開始...")
+        if force:
+            print(f"🔄 {ticker}: 強制再実行モード - 処理開始...")
+        else:
+            print(f"🔄 {ticker}: 処理開始...")
 
         # 株価データ取得
         stock_data = fetch_stock_data(ticker, stock['market'])
@@ -576,12 +582,20 @@ def log_batch_job(conn, start_time: datetime, total_stocks: int, success_count: 
 
 def main():
     """メイン処理"""
+    # コマンドライン引数の解析
+    parser = argparse.ArgumentParser(description='AI株式分析バッチ処理')
+    parser.add_argument('--force', action='store_true',
+                        help='既存データを無視して強制的に再実行')
+    args = parser.parse_args()
+
     start_time = datetime.now()
 
     print("\n" + "=" * 50)
     print("🚀 AI株式分析バッチジョブ開始 (Python + yfinance)")
     print(f"⏰ 開始時刻: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     print("🔄 順次処理モード")
+    if args.force:
+        print("⚡ 強制再実行モード有効")
     print("=" * 50 + "\n")
 
     conn = None
@@ -609,13 +623,13 @@ def main():
         # 順次処理
         for i, stock in enumerate(stocks):
             print(f"[{i + 1}/{total_stocks}] ", end="")
-            success = process_single_stock(stock)
-            
+            success = process_single_stock(stock, force=args.force)
+
             if success:
                 success_count += 1
             else:
                 failure_count += 1
-                
+
             # 少し待機（レート制限対策）
             if i < total_stocks - 1:
                 time.sleep(1)
