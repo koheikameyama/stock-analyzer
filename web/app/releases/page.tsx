@@ -12,6 +12,8 @@ interface Release {
   url: string;
 }
 
+export const dynamic = 'force-dynamic';
+
 export default function ReleasesPage() {
   const [releases, setReleases] = useState<Release[]>([]);
   const [isLoading, setIsLoading] = useState(true);
