@@ -78,11 +78,11 @@ export default function DisclaimerPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-surface-900 mb-3">7. 第三者サービスについて</h2>
+            <h2 className="text-xl font-bold text-surface-900 mb-3">7. 外部情報源について</h2>
             <p className="text-surface-700 leading-relaxed">
-              本サービスは、GitHub API等の第三者サービスを利用しています。
-              これら第三者サービスの利用可能性、正確性、継続性について、当方は保証いたしません。
-              第三者サービスの利用により生じた損害について、当方は責任を負いません。
+              本サービスは、公開されている株価データ、企業財務情報、ニュース等の外部情報源を利用して分析を行っています。
+              これら外部情報源の正確性、完全性、適時性について、当方は保証いたしません。
+              また、外部情報源の提供停止や変更により、本サービスの機能が制限される場合があります。
             </p>
           </section>
 
