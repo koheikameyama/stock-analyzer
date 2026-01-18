@@ -4,10 +4,10 @@
 
 import type { Metadata } from 'next';
 import { Inter, Outfit } from 'next/font/google';
-import Script from 'next/script';
 import './globals.css';
 import { Providers } from './providers';
 import { InstallPrompt } from '@/components/InstallPrompt';
+import { Analytics } from '@/components/Analytics';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -29,17 +29,10 @@ export const metadata: Metadata = {
   keywords: ['AI', '株式分析', '日本株', '投資', 'Buy/Hold/Sell', '株価予測', '個人投資家'],
   authors: [{ name: 'Stock Analyzer' }],
   manifest: '/manifest.json',
-  themeColor: '#6366f1',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'AI株式分析',
-  },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
   },
   openGraph: {
     type: 'website',
@@ -71,6 +64,14 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#6366f1',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -79,26 +80,7 @@ export default function RootLayout({
   return (
     <html lang="ja" className={`${inter.variable} ${outfit.variable}`}>
       <body className={inter.className}>
-        {/* Google Analytics 4 */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-0283BB9Y5B"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-0283BB9Y5B');
-          `}
-        </Script>
-
-        {/* Google AdSense */}
-        <Script
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7558679080857597"
-          strategy="afterInteractive"
-        />
-
+        <Analytics />
         <Providers>{children}</Providers>
         <InstallPrompt />
       </body>
