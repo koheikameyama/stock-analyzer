@@ -30,7 +30,7 @@ def send_slack_notification(
         bool: 送信成功時True
     """
     # メッセージを構築
-    message = f"""<!here> 📢 *リリース通知*
+    message = f"""<!channel> 📢 *リリース通知*
 
 *【タイトル】*
 {title}
