@@ -74,14 +74,38 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          # JSONペイロードを作成
-          cat > /tmp/slack.json <<SLACK_JSON
-          {
-            "text": "📢 *リリース通知*\\n\\n*【タイトル】*\\n${TITLE}\\n\\n*【変更内容】*\\n${BODY}\\n\\n━━━━━━━━━━━━━━━\\n💡 *X投稿候補:*\\n\\\`\\\`\\\`\\n${POST_TEMPLATE}\\n\\\`\\\`\\\`\\n\\n📝 このメッセージをコピーしてXに投稿してください",
-            "username": "Release Bot",
-            "icon_emoji": ":rocket:"
+          # JSONエンコード用の関数
+          json_escape() {
+            echo "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'
           }
-          SLACK_JSON
+
+          # メッセージを作成
+          MESSAGE="<!here> 📢 *リリース通知*
+
+*【タイトル】*
+${TITLE}
+
+*【変更内容】*
+${BODY}
+
+━━━━━━━━━━━━━━━
+💡 *X投稿候補:*
+\`\`\`
+${POST_TEMPLATE}
+\`\`\`
+
+📝 このメッセージをコピーしてXに投稿してください"
+
+          # JSONペイロードを作成
+          MESSAGE_ESCAPED=$(json_escape "$MESSAGE")
+
+          cat > /tmp/slack.json <<EOF
+{
+  "text": ${MESSAGE_ESCAPED},
+  "username": "Release Bot",
+  "icon_emoji": ":rocket:"
+}
+EOF
 
           # Slackに送信
           curl -X POST "$SLACK_WEBHOOK_URL" \
