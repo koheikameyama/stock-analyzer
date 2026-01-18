@@ -77,13 +77,18 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           # Slack通知用のJSONを作成
-          cat > /tmp/slack_payload.json <<SLACK_EOF
-{
-  "text": "📢 *リリース通知*\n\n*【タイトル】*\n${TITLE}\n\n*【変更内容】*\n${BODY}\n\n━━━━━━━━━━━━━━━\n💡 *X投稿候補:*\n\`\`\`\n${POST_TEMPLATE}\n\`\`\`\n\n📝 このメッセージをコピーしてXに投稿してください",
-  "username": "Release Bot",
-  "icon_emoji": ":rocket:"
-}
-SLACK_EOF
+          cat > /tmp/slack_payload.json <<'SLACK_EOF'
+          {
+            "text": "📢 *リリース通知*\n\n*【タイトル】*\n${TITLE}\n\n*【変更内容】*\n${BODY}\n\n━━━━━━━━━━━━━━━\n💡 *X投稿候補:*\n\`\`\`\n${POST_TEMPLATE}\n\`\`\`\n\n📝 このメッセージをコピーしてXに投稿してください",
+            "username": "Release Bot",
+            "icon_emoji": ":rocket:"
+          }
+          SLACK_EOF
+
+          # 環境変数を展開
+          sed -i "s/\${TITLE}/$TITLE/g" /tmp/slack_payload.json
+          sed -i "s/\${BODY}/$BODY/g" /tmp/slack_payload.json
+          sed -i "s/\${POST_TEMPLATE}/$POST_TEMPLATE/g" /tmp/slack_payload.json
 
           # Slackに送信
           curl -X POST "$SLACK_WEBHOOK_URL" \
