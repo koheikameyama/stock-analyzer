@@ -31,11 +31,18 @@ jobs:
 
       - name: Prepare notification message
         id: prepare
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          INPUT_TITLE: ${{ github.event.inputs.title }}
+          INPUT_CHANGES: ${{ github.event.inputs.changes }}
+          INPUT_POST_TEMPLATE: ${{ github.event.inputs.post_template }}
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
+          if [ "$EVENT_NAME" = "release" ]; then
             # GitHub Releaseから情報を取得
-            TITLE="${{ github.event.release.name }}"
-            BODY="${{ github.event.release.body }}"
+            TITLE="$RELEASE_NAME"
+            BODY="$RELEASE_BODY"
 
             # X投稿テンプレートを生成
             POST_TEMPLATE="【アップデート】${TITLE}
@@ -47,11 +54,11 @@ https://stock-analyzer.jp/
 #AI株式分析 #投資ツール"
           else
             # 手動実行の場合は入力値を使用
-            TITLE="${{ github.event.inputs.title }}"
-            BODY="${{ github.event.inputs.changes }}"
+            TITLE="$INPUT_TITLE"
+            BODY="$INPUT_CHANGES"
 
-            if [ -n "${{ github.event.inputs.post_template }}" ]; then
-              POST_TEMPLATE="${{ github.event.inputs.post_template }}"
+            if [ -n "$INPUT_POST_TEMPLATE" ]; then
+              POST_TEMPLATE="$INPUT_POST_TEMPLATE"
             else
               # テンプレートが指定されていない場合は自動生成
               POST_TEMPLATE="【アップデート】${TITLE}
@@ -77,33 +84,18 @@ https://stock-analyzer.jp/
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          # Slack通知メッセージを作成
-          MESSAGE="📢 *リリース通知*
-
-*【タイトル】*
-${TITLE}
-
-*【変更内容】*
-${BODY}
-
----
-💡 *X投稿候補:*
-\`\`\`
-${POST_TEMPLATE}
-\`\`\`
-
-📝 このメッセージをコピーしてXに投稿してください"
+          # Slack通知用のJSONを作成
+          cat > /tmp/slack_payload.json <<SLACK_EOF
+{
+  "text": "📢 *リリース通知*\n\n*【タイトル】*\n${TITLE}\n\n*【変更内容】*\n${BODY}\n\n━━━━━━━━━━━━━━━\n💡 *X投稿候補:*\n\`\`\`\n${POST_TEMPLATE}\n\`\`\`\n\n📝 このメッセージをコピーしてXに投稿してください",
+  "username": "Release Bot",
+  "icon_emoji": ":rocket:"
+}
+SLACK_EOF
 
           # Slackに送信
           curl -X POST "$SLACK_WEBHOOK_URL" \
             -H 'Content-Type: application/json' \
-            -d "$(cat <<EOF
-{
-  "text": "$MESSAGE",
-  "username": "Release Bot",
-  "icon_emoji": ":rocket:"
-}
-EOF
-)"
+            -d @/tmp/slack_payload.json
 
           echo "✅ Slackへの送信成功"
