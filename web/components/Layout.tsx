@@ -76,42 +76,42 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                         </div>
 
                         {/* フッターナビゲーション */}
-                        <nav className="flex items-center justify-center gap-4 text-sm">
+                        <nav className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-sm">
                             <a
                                 href="/privacy-policy"
-                                className="text-surface-700 hover:text-surface-900 transition-colors font-medium"
+                                className="text-surface-700 hover:text-surface-900 transition-colors font-medium whitespace-nowrap"
                             >
                                 プライバシーポリシー
                             </a>
-                            <span className="text-surface-400">|</span>
+                            <span className="text-surface-400 hidden sm:inline">|</span>
                             <a
                                 href="/terms"
-                                className="text-surface-700 hover:text-surface-900 transition-colors font-medium"
+                                className="text-surface-700 hover:text-surface-900 transition-colors font-medium whitespace-nowrap"
                             >
                                 利用規約
                             </a>
-                            <span className="text-surface-400">|</span>
+                            <span className="text-surface-400 hidden sm:inline">|</span>
                             <a
                                 href="/releases"
-                                className="text-surface-700 hover:text-surface-900 transition-colors font-medium"
+                                className="text-surface-700 hover:text-surface-900 transition-colors font-medium whitespace-nowrap"
                             >
                                 リリースノート
                             </a>
-                            <span className="text-surface-400">|</span>
+                            <span className="text-surface-400 hidden sm:inline">|</span>
                             <a
                                 href="https://forms.gle/irNjkWEqAfvuVrip9"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-surface-700 hover:text-surface-900 transition-colors font-medium"
+                                className="text-surface-700 hover:text-surface-900 transition-colors font-medium whitespace-nowrap"
                             >
                                 フィードバック
                             </a>
-                            <span className="text-surface-400">|</span>
+                            <span className="text-surface-400 hidden sm:inline">|</span>
                             <a
                                 href="https://x.com/stockAnalyzerJP"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-surface-700 hover:text-surface-900 transition-colors flex items-center gap-1 font-medium"
+                                className="text-surface-700 hover:text-surface-900 transition-colors flex items-center gap-1 font-medium whitespace-nowrap"
                             >
                                 <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
