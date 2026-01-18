@@ -70,28 +70,18 @@ jobs:
             } >> $GITHUB_ENV
           fi
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          pip install requests
+
       - name: Send to Slack
-        uses: rtCamp/action-slack-notify@v2
         env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_USERNAME: Release Bot
-          SLACK_ICON_EMOJI: ':rocket:'
-          SLACK_COLOR: good
-          SLACK_TITLE: '📢 リリース通知'
-          SLACK_MESSAGE: |
-            <!here>
-
-            *【タイトル】*
-            ${{ env.TITLE }}
-
-            *【変更内容】*
-            ${{ env.BODY }}
-
-            ━━━━━━━━━━━━━━━
-            💡 *X投稿候補:*
-            ```
-            ${{ env.POST_TEMPLATE }}
-            ```
-
-            📝 このメッセージをコピーしてXに投稿してください
-          SLACK_FOOTER: ''
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          cd batch
+          python release_notification.py
