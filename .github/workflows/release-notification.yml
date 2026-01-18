@@ -40,45 +40,37 @@ jobs:
           INPUT_POST_TEMPLATE: ${{ github.event.inputs.post_template }}
         run: |
           if [ "$EVENT_NAME" = "release" ]; then
-            # GitHub Releaseから情報を取得
             TITLE="$RELEASE_NAME"
             BODY="$RELEASE_BODY"
-
-            # X投稿テンプレートを生成
-            POST_TEMPLATE="【アップデート】${TITLE}
-
-$BODY
-
-https://stock-analyzer.jp/
-
-#AI株式分析 #投資ツール"
           else
-            # 手動実行の場合は入力値を使用
             TITLE="$INPUT_TITLE"
             BODY="$INPUT_CHANGES"
-
-            if [ -n "$INPUT_POST_TEMPLATE" ]; then
-              POST_TEMPLATE="$INPUT_POST_TEMPLATE"
-            else
-              # テンプレートが指定されていない場合は自動生成
-              POST_TEMPLATE="【アップデート】${TITLE}
-
-$BODY
-
-https://stock-analyzer.jp/
-
-#AI株式分析 #投資ツール"
-            fi
           fi
 
-          # 環境変数に保存（改行を含むのでファイル経由）
+          # 環境変数に保存
           echo "TITLE=$TITLE" >> $GITHUB_ENV
-          echo "BODY<<EOF" >> $GITHUB_ENV
-          echo "$BODY" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-          echo "POST_TEMPLATE<<EOF" >> $GITHUB_ENV
-          echo "$POST_TEMPLATE" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          {
+            echo "BODY<<EOF_BODY"
+            echo "$BODY"
+            echo "EOF_BODY"
+          } >> $GITHUB_ENV
+
+          # X投稿テンプレートを生成
+          if [ "$EVENT_NAME" != "release" ] && [ -n "$INPUT_POST_TEMPLATE" ]; then
+            POST_TEMPLATE="$INPUT_POST_TEMPLATE"
+          else
+            {
+              echo "POST_TEMPLATE<<EOF_POST"
+              echo "【アップデート】${TITLE}"
+              echo ""
+              echo "$BODY"
+              echo ""
+              echo "https://stock-analyzer.jp/"
+              echo ""
+              echo "#AI株式分析 #投資ツール"
+              echo "EOF_POST"
+            } >> $GITHUB_ENV
+          fi
 
       - name: Send to Slack
         env:
