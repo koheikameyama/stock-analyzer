@@ -76,14 +76,16 @@ jobs:
         run: |
           MESSAGE="📢 *リリース通知*\n\n*【タイトル】*\n${TITLE}\n\n*【変更内容】*\n${BODY}\n\n━━━━━━━━━━━━━━━\n💡 *X投稿候補:*\n\`\`\`\n${POST_TEMPLATE}\n\`\`\`\n\n📝 このメッセージをコピーしてXに投稿してください"
 
-          JSON_PAYLOAD=$(cat <<EOF
-{
-  "text": "${MESSAGE}",
-  "username": "Release Bot",
-  "icon_emoji": ":rocket:"
-}
-EOF
-)
+          JSON_PAYLOAD=$(cat <<'EOF'
+          {
+            "text": "${MESSAGE}",
+            "username": "Release Bot",
+            "icon_emoji": ":rocket:"
+          }
+          EOF
+          )
+
+          JSON_PAYLOAD=$(echo "$JSON_PAYLOAD" | sed "s/\${MESSAGE}/${MESSAGE}/g")
 
           echo "$JSON_PAYLOAD" | curl -X POST "$SLACK_WEBHOOK_URL" \
             -H 'Content-Type: application/json' \
