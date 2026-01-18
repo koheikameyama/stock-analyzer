@@ -8,8 +8,9 @@ on:
 
 jobs:
   create-release:
-    # PRがマージされ、かつversion:*ラベルが付いている場合のみ実行
-    if: github.event.pull_request.merged == true && (contains(github.event.pull_request.labels.*.name, 'version:major') || contains(github.event.pull_request.labels.*.name, 'version:minor') || contains(github.event.pull_request.labels.*.name, 'version:patch'))
+    # PRがマージされ、かつversion:major/minorラベルが付いている場合のみ実行
+    # version:patchの場合はリリースを作成しない（次のリリースにまとめる）
+    if: github.event.pull_request.merged == true && (contains(github.event.pull_request.labels.*.name, 'version:major') || contains(github.event.pull_request.labels.*.name, 'version:minor'))
     runs-on: ubuntu-latest
 
     steps:
