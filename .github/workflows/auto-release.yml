@@ -60,29 +60,27 @@ jobs:
 
       - name: Create release body
         id: release_body
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
-          # PRのタイトルと本文からリリースノートを生成
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          PR_BODY="${{ github.event.pull_request.body }}"
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          PR_URL="${{ github.event.pull_request.html_url }}"
-          AUTHOR="${{ github.event.pull_request.user.login }}"
-
           # リリースノート作成
-          RELEASE_BODY="## Changes
+          cat >> $GITHUB_OUTPUT <<EOF
+          release_body<<RELEASE_EOF
+          ## Changes
 
-$PR_TITLE
+          $PR_TITLE
 
-$PR_BODY
+          $PR_BODY
 
----
-**Full Changelog**: [#$PR_NUMBER]($PR_URL)
-**Author**: @$AUTHOR"
-
-          # 環境変数に保存（改行対応）
-          echo "release_body<<EOF" >> $GITHUB_OUTPUT
-          echo "$RELEASE_BODY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          ---
+          **Full Changelog**: [#$PR_NUMBER]($PR_URL)
+          **Author**: @$AUTHOR
+          RELEASE_EOF
+          EOF
 
       - name: Create GitHub Release
         env:
