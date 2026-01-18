@@ -1,9 +1,6 @@
 name: Release Notification
 
 on:
-  push:
-    branches:
-      - main
   release:
     types: [published]
   workflow_dispatch:
