@@ -36,7 +36,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                     初心者にも優しい投資サポート
                                 </span>
                             </div>
-                        </div>
+                        </a>
                         <nav className="flex items-center gap-2 sm:gap-4">
                             <button
                                 onClick={() => setIsAboutModalOpen(true)}
