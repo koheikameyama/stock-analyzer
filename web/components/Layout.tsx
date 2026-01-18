@@ -91,6 +91,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                             </a>
                             <span className="text-surface-300">|</span>
                             <a
+                                href="/releases"
+                                className="text-surface-600 hover:text-surface-900 transition-colors"
+                            >
+                                リリースノート
+                            </a>
+                            <span className="text-surface-300">|</span>
+                            <a
                                 href="https://forms.gle/irNjkWEqAfvuVrip9"
                                 target="_blank"
                                 rel="noopener noreferrer"

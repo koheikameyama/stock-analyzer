@@ -8,6 +8,7 @@ import './globals.css';
 import { Providers } from './providers';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { Analytics } from '@/components/Analytics';
+import { ReleaseNoteModal } from '@/components/ReleaseNoteModal';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -83,6 +84,7 @@ export default function RootLayout({
         <Analytics />
         <Providers>{children}</Providers>
         <InstallPrompt />
+        <ReleaseNoteModal />
       </body>
     </html>
   );
