@@ -20,6 +20,8 @@ jobs:
 
       - name: Get latest version and calculate new version
         id: version
+        env:
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
         run: |
           # 最新のタグを取得（存在しない場合はv0.0.0）
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
@@ -35,18 +37,16 @@ jobs:
           echo "Current version: $MAJOR.$MINOR.$PATCH"
 
           # ラベルに応じてバージョンをインクリメント
-          LABELS="${{ toJson(github.event.pull_request.labels.*.name) }}"
-
-          if echo "$LABELS" | grep -q "version:major"; then
+          if echo "$PR_LABELS" | grep -q "version:major"; then
             MAJOR=$((MAJOR + 1))
             MINOR=0
             PATCH=0
             BUMP_TYPE="major"
-          elif echo "$LABELS" | grep -q "version:minor"; then
+          elif echo "$PR_LABELS" | grep -q "version:minor"; then
             MINOR=$((MINOR + 1))
             PATCH=0
             BUMP_TYPE="minor"
-          elif echo "$LABELS" | grep -q "version:patch"; then
+          elif echo "$PR_LABELS" | grep -q "version:patch"; then
             PATCH=$((PATCH + 1))
             BUMP_TYPE="patch"
           fi
