@@ -76,42 +76,44 @@ jobs:
         run: |
           # JSONエンコード用の関数
           json_escape() {
-            echo "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'
+            python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))' <<< "$1"
           }
 
-          # メッセージを作成（heredocで）
-          MESSAGE=$(cat <<'SLACKMSG'
-          <!here> 📢 *リリース通知*
+          # デバッグ: 環境変数を確認
+          echo "TITLE: $TITLE"
+          echo "POST_TEMPLATE length: ${#POST_TEMPLATE}"
 
-          *【タイトル】*
-          ${TITLE}
+          # メッセージを作成
+          MESSAGE="<!here> 📢 *リリース通知*
 
-          *【変更内容】*
-          ${BODY}
+*【タイトル】*
+${TITLE}
 
-          ━━━━━━━━━━━━━━━
-          💡 *X投稿候補:*
-          ```
-          ${POST_TEMPLATE}
-          ```
+*【変更内容】*
+${BODY}
 
-          📝 このメッセージをコピーしてXに投稿してください
-          SLACKMSG
-          )
+━━━━━━━━━━━━━━━
+💡 *X投稿候補:*
+\`\`\`
+${POST_TEMPLATE}
+\`\`\`
 
-          # 環境変数を展開
-          MESSAGE=$(eval "echo \"$MESSAGE\"")
+📝 このメッセージをコピーしてXに投稿してください"
 
           # JSONペイロードを作成
           MESSAGE_ESCAPED=$(json_escape "$MESSAGE")
 
           cat > /tmp/slack.json <<JSONEOF
-          {
-            "text": ${MESSAGE_ESCAPED},
-            "username": "Release Bot",
-            "icon_emoji": ":rocket:"
-          }
-          JSONEOF
+{
+  "text": ${MESSAGE_ESCAPED},
+  "username": "Release Bot",
+  "icon_emoji": ":rocket:"
+}
+JSONEOF
+
+          # デバッグ: JSONファイルの内容を表示
+          echo "JSON payload:"
+          cat /tmp/slack.json
 
           # Slackに送信
           curl -X POST "$SLACK_WEBHOOK_URL" \
