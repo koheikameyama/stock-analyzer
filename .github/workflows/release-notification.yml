@@ -1,11 +1,8 @@
 name: Release Notification
 
 on:
-  # GitHub Release作成時に自動実行
   release:
     types: [published]
-
-  # 手動実行も可能
   workflow_dispatch:
     inputs:
       title:
@@ -24,7 +21,6 @@ on:
 jobs:
   notify:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -47,7 +43,6 @@ jobs:
             BODY="$INPUT_CHANGES"
           fi
 
-          # 環境変数に保存
           echo "TITLE=$TITLE" >> $GITHUB_ENV
           {
             echo "BODY<<EOF_BODY"
@@ -55,9 +50,12 @@ jobs:
             echo "EOF_BODY"
           } >> $GITHUB_ENV
 
-          # X投稿テンプレートを生成
           if [ "$EVENT_NAME" != "release" ] && [ -n "$INPUT_POST_TEMPLATE" ]; then
-            POST_TEMPLATE="$INPUT_POST_TEMPLATE"
+            {
+              echo "POST_TEMPLATE<<EOF_POST"
+              echo "$INPUT_POST_TEMPLATE"
+              echo "EOF_POST"
+            } >> $GITHUB_ENV
           else
             {
               echo "POST_TEMPLATE<<EOF_POST"
@@ -76,23 +74,19 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          # Slack通知用のJSONを作成
-          cat > /tmp/slack_payload.json <<'SLACK_EOF'
-          {
-            "text": "📢 *リリース通知*\n\n*【タイトル】*\n${TITLE}\n\n*【変更内容】*\n${BODY}\n\n━━━━━━━━━━━━━━━\n💡 *X投稿候補:*\n\`\`\`\n${POST_TEMPLATE}\n\`\`\`\n\n📝 このメッセージをコピーしてXに投稿してください",
-            "username": "Release Bot",
-            "icon_emoji": ":rocket:"
-          }
-          SLACK_EOF
+          MESSAGE="📢 *リリース通知*\n\n*【タイトル】*\n${TITLE}\n\n*【変更内容】*\n${BODY}\n\n━━━━━━━━━━━━━━━\n💡 *X投稿候補:*\n\`\`\`\n${POST_TEMPLATE}\n\`\`\`\n\n📝 このメッセージをコピーしてXに投稿してください"
 
-          # 環境変数を展開
-          sed -i "s/\${TITLE}/$TITLE/g" /tmp/slack_payload.json
-          sed -i "s/\${BODY}/$BODY/g" /tmp/slack_payload.json
-          sed -i "s/\${POST_TEMPLATE}/$POST_TEMPLATE/g" /tmp/slack_payload.json
+          JSON_PAYLOAD=$(cat <<EOF
+{
+  "text": "${MESSAGE}",
+  "username": "Release Bot",
+  "icon_emoji": ":rocket:"
+}
+EOF
+)
 
-          # Slackに送信
-          curl -X POST "$SLACK_WEBHOOK_URL" \
+          echo "$JSON_PAYLOAD" | curl -X POST "$SLACK_WEBHOOK_URL" \
             -H 'Content-Type: application/json' \
-            -d @/tmp/slack_payload.json
+            -d @-
 
           echo "✅ Slackへの送信成功"
