@@ -74,21 +74,18 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          MESSAGE="📢 *リリース通知*\n\n*【タイトル】*\n${TITLE}\n\n*【変更内容】*\n${BODY}\n\n━━━━━━━━━━━━━━━\n💡 *X投稿候補:*\n\`\`\`\n${POST_TEMPLATE}\n\`\`\`\n\n📝 このメッセージをコピーしてXに投稿してください"
-
-          JSON_PAYLOAD=$(cat <<'EOF'
+          # JSONペイロードを作成
+          cat > /tmp/slack.json <<SLACK_JSON
           {
-            "text": "${MESSAGE}",
+            "text": "📢 *リリース通知*\\n\\n*【タイトル】*\\n${TITLE}\\n\\n*【変更内容】*\\n${BODY}\\n\\n━━━━━━━━━━━━━━━\\n💡 *X投稿候補:*\\n\\\`\\\`\\\`\\n${POST_TEMPLATE}\\n\\\`\\\`\\\`\\n\\n📝 このメッセージをコピーしてXに投稿してください",
             "username": "Release Bot",
             "icon_emoji": ":rocket:"
           }
-          EOF
-          )
+          SLACK_JSON
 
-          JSON_PAYLOAD=$(echo "$JSON_PAYLOAD" | sed "s/\${MESSAGE}/${MESSAGE}/g")
-
-          echo "$JSON_PAYLOAD" | curl -X POST "$SLACK_WEBHOOK_URL" \
+          # Slackに送信
+          curl -X POST "$SLACK_WEBHOOK_URL" \
             -H 'Content-Type: application/json' \
-            -d @-
+            -d @/tmp/slack.json
 
           echo "✅ Slackへの送信成功"
