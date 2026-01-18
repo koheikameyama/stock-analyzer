@@ -79,33 +79,39 @@ jobs:
             echo "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'
           }
 
-          # メッセージを作成
-          MESSAGE="<!here> 📢 *リリース通知*
+          # メッセージを作成（heredocで）
+          MESSAGE=$(cat <<'SLACKMSG'
+          <!here> 📢 *リリース通知*
 
-*【タイトル】*
-${TITLE}
+          *【タイトル】*
+          ${TITLE}
 
-*【変更内容】*
-${BODY}
+          *【変更内容】*
+          ${BODY}
 
-━━━━━━━━━━━━━━━
-💡 *X投稿候補:*
-\`\`\`
-${POST_TEMPLATE}
-\`\`\`
+          ━━━━━━━━━━━━━━━
+          💡 *X投稿候補:*
+          ```
+          ${POST_TEMPLATE}
+          ```
 
-📝 このメッセージをコピーしてXに投稿してください"
+          📝 このメッセージをコピーしてXに投稿してください
+          SLACKMSG
+          )
+
+          # 環境変数を展開
+          MESSAGE=$(eval "echo \"$MESSAGE\"")
 
           # JSONペイロードを作成
           MESSAGE_ESCAPED=$(json_escape "$MESSAGE")
 
-          cat > /tmp/slack.json <<EOF
-{
-  "text": ${MESSAGE_ESCAPED},
-  "username": "Release Bot",
-  "icon_emoji": ":rocket:"
-}
-EOF
+          cat > /tmp/slack.json <<JSONEOF
+          {
+            "text": ${MESSAGE_ESCAPED},
+            "username": "Release Bot",
+            "icon_emoji": ":rocket:"
+          }
+          JSONEOF
 
           # Slackに送信
           curl -X POST "$SLACK_WEBHOOK_URL" \
