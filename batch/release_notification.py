@@ -72,7 +72,7 @@ def send_slack_notification(
     post_template: str
 ) -> bool:
     """
-    Slackにリリース通知を送信する
+    SlackにX投稿テンプレートを送信する
 
     Args:
         webhook_url: Slack Webhook URL
@@ -86,28 +86,8 @@ def send_slack_notification(
     # X投稿用テキストを生成（140文字制限）
     x_post_text = generate_x_post(title, body)
 
-    # 1. リリース情報の通知
-    info_payload = {
-        "text": f"<!channel> 📢 *リリース通知*\n\n*【タイトル】*\n{title}\n\n*【変更内容】*\n{body}",
-        "username": "Release Bot",
-        "icon_emoji": ":rocket:"
-    }
-
-    try:
-        response = requests.post(
-            webhook_url,
-            data=json.dumps(info_payload),
-            headers={'Content-Type': 'application/json'},
-            timeout=10
-        )
-        response.raise_for_status()
-        print(f"✅ リリース情報の送信成功: {response.status_code}")
-    except requests.exceptions.RequestException as e:
-        print(f"❌ リリース情報の送信失敗: {e}", file=sys.stderr)
-        return False
-
-    # 2. X投稿用テキストを別メッセージで送信（weekly-summary形式）
-    x_post_payload = {
+    # X投稿用テキストを送信（weekly-summary形式）
+    payload = {
         "text": f"<!channel> 📢 *X投稿テンプレート*\n\n以下をコピーしてXに投稿してください👇\n\n```\n{x_post_text}\n```\n\n文字数: {len(x_post_text)}",
         "username": "Release Bot",
         "icon_emoji": ":rocket:"
@@ -116,15 +96,15 @@ def send_slack_notification(
     try:
         response = requests.post(
             webhook_url,
-            data=json.dumps(x_post_payload),
+            data=json.dumps(payload),
             headers={'Content-Type': 'application/json'},
             timeout=10
         )
         response.raise_for_status()
-        print(f"✅ X投稿テンプレートの送信成功: {response.status_code}")
+        print(f"✅ Slackへの送信成功: {response.status_code}")
         return True
     except requests.exceptions.RequestException as e:
-        print(f"❌ X投稿テンプレートの送信失敗: {e}", file=sys.stderr)
+        print(f"❌ Slackへの送信失敗: {e}", file=sys.stderr)
         return False
 
 
