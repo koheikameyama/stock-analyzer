@@ -20,7 +20,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <header className="bg-white/80 backdrop-blur-sm border-b border-surface-200 sticky top-0 z-50 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center gap-3">
+                        <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
                             <div className="w-10 h-10 flex items-center justify-center">
                                 <img
                                     src="/images/logo.png"
