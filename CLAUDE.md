@@ -80,6 +80,38 @@ PR作成時は、適切なバージョンラベルを提案してください。
 
 詳しくは [ブランチ運用戦略](./docs/branch_strategy.md) を参照してください。
 
+## Issue管理
+
+**新しいissueを作成したら、必ずプロジェクトに追加してください。**
+
+### Issue作成時の手順
+
+1. `gh issue create` でissueを作成
+2. 作成されたissue番号を確認
+3. 以下のコマンドでプロジェクトに追加：
+   ```bash
+   gh project item-add 2 --owner koheikameyama --url https://github.com/koheikameyama/stock-analyzer/issues/<ISSUE_NUMBER>
+   ```
+
+### プロジェクト情報
+
+- **プロジェクト番号**: 2
+- **プロジェクト名**: Stock Analyzer Development
+- **Owner**: koheikameyama
+
+### 例
+
+```bash
+# Issue作成
+gh issue create --title "新機能" --body "説明" --label "enhancement"
+# → Issue #44 が作成される
+
+# プロジェクトに追加
+gh project item-add 2 --owner koheikameyama --url https://github.com/koheikameyama/stock-analyzer/issues/44
+```
+
+**重要: issueを作成したら、必ずプロジェクトへの追加も実行してください。**
+
 ## 例外
 
 - コード自体（変数名、関数名、クラス名など）は英語で記述する
