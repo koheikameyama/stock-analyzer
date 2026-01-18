@@ -20,9 +20,21 @@ export const ReleaseNoteModal: React.FC = () => {
     const fetchRelease = async () => {
       try {
         const response = await fetch('/api/releases/latest');
-        if (!response.ok) throw new Error('Failed to fetch release');
+        if (!response.ok) {
+          console.warn('Failed to fetch release:', response.status);
+          setIsLoading(false);
+          return;
+        }
 
         const data = await response.json();
+
+        // エラーレスポンスの場合は処理を中断
+        if (data.error) {
+          console.warn('Release API returned error:', data.error);
+          setIsLoading(false);
+          return;
+        }
+
         setRelease(data);
 
         // localStorageで表示済みバージョンをチェック
