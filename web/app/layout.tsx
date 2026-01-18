@@ -7,6 +7,7 @@ import { Inter, Outfit } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
 import { Providers } from './providers';
+import { InstallPrompt } from '@/components/InstallPrompt';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -27,6 +28,19 @@ export const metadata: Metadata = {
   description: 'AIが日本株の主要15銘柄を毎日自動分析。投資判断（Buy/Hold/Sell）を詳細な根拠付きで提供します。初心者にもわかりやすい無料の株式分析サービスです。',
   keywords: ['AI', '株式分析', '日本株', '投資', 'Buy/Hold/Sell', '株価予測', '個人投資家'],
   authors: [{ name: 'Stock Analyzer' }],
+  manifest: '/manifest.json',
+  themeColor: '#6366f1',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'AI株式分析',
+  },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
   openGraph: {
     type: 'website',
     locale: 'ja_JP',
@@ -89,6 +103,7 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <Providers>{children}</Providers>
+        <InstallPrompt />
       </body>
     </html>
   );

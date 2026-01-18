@@ -53,8 +53,21 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 
+# PWA
+**/public/sw.js
+**/public/workbox-*.js
+**/public/worker-*.js
+**/public/sw.js.map
+**/public/workbox-*.js.map
+**/public/worker-*.js.map
+
 # Vercel
 .vercel
 .env*.local
 
+# Service account files
 *.json
+!**/public/manifest.json
+!package.json
+!package-lock.json
+!tsconfig.json
