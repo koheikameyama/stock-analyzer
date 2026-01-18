@@ -78,6 +78,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         株式投資にはリスクが伴い、投資元本を割り込む可能性があります。
                                         投資に関する最終判断は、ご自身の責任において行ってください。
                                         本サービスの利用により生じたいかなる損害についても、当方は一切の責任を負いかねます。
+                                        <a href="/disclaimer" className="inline-block ml-2 underline hover:text-amber-900 font-semibold">
+                                            詳細を見る →
+                                        </a>
                                     </p>
                                 </div>
                             </div>
@@ -85,6 +88,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
                         {/* フッターナビゲーション */}
                         <nav className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-sm">
+                            <a
+                                href="/disclaimer"
+                                className="text-surface-700 hover:text-surface-900 transition-colors font-medium whitespace-nowrap"
+                            >
+                                免責事項
+                            </a>
+                            <span className="text-surface-400 hidden sm:inline">|</span>
                             <a
                                 href="/privacy-policy"
                                 className="text-surface-700 hover:text-surface-900 transition-colors font-medium whitespace-nowrap"
