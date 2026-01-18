@@ -11,6 +11,60 @@ import requests
 from typing import Optional
 
 
+def generate_x_post(title: str, body: str) -> str:
+    """
+    X投稿用のテキストを生成（140文字制限）
+
+    Args:
+        title: リリースタイトル
+        body: リリース内容
+
+    Returns:
+        str: X投稿テキスト
+    """
+    # 主要な新機能を抽出（最初の## ✨ 新機能セクション）
+    lines = body.split('\n')
+    features = []
+    in_features = False
+
+    for line in lines:
+        if '## ✨ 新機能' in line or '##✨ 新機能' in line:
+            in_features = True
+            continue
+        elif line.startswith('##') and in_features:
+            break
+        elif in_features and line.strip().startswith('-'):
+            # 最初の: までを取得（簡潔に）
+            feature = line.strip().lstrip('-').strip()
+            if ':' in feature:
+                feature = feature.split(':')[0]
+            elif '**' in feature:
+                # **で囲まれた部分を抽出
+                import re
+                match = re.search(r'\*\*(.+?)\*\*', feature)
+                if match:
+                    feature = match.group(1)
+            features.append(feature)
+
+    # X投稿テキスト生成（140文字以内）
+    base_text = f"🎉 {title}リリース\n\n"
+    url = "https://stock-analyzer.jp/\n\n#AI株式分析 #投資ツール"
+
+    # 残り文字数を計算
+    remaining = 140 - len(base_text) - len(url)
+
+    # 新機能を追加（文字数制限内で）
+    feature_text = ""
+    for i, feature in enumerate(features[:3], 1):  # 最大3つまで
+        line = f"✅ {feature}\n"
+        if len(feature_text) + len(line) <= remaining - 3:  # "..." の余裕
+            feature_text += line
+        else:
+            break
+
+    return base_text + feature_text + "\n" + url
+
+
 def send_slack_notification(
     webhook_url: str,
     title: str,
@@ -24,31 +78,68 @@ def send_slack_notification(
         webhook_url: Slack Webhook URL
         title: リリースタイトル
         body: リリース内容
-        post_template: X投稿テンプレート
+        post_template: X投稿テンプレート（未使用、独自生成）
 
     Returns:
         bool: 送信成功時True
     """
-    # メッセージを構築
-    message = f"""<!channel> 📢 *リリース通知*
+    # X投稿用テキストを生成（140文字制限）
+    x_post_text = generate_x_post(title, body)
 
-*【タイトル】*
-{title}
-
-*【変更内容】*
-{body}
-
-━━━━━━━━━━━━━━━
-💡 *X投稿候補:*
-```
-{post_template}
-```
-
-📝 このメッセージをコピーしてXに投稿してください"""
+    # メッセージを構築（Slack Blocks形式で改行を保持）
+    blocks = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"<!channel> 📢 *リリース通知*"
+            }
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*【タイトル】*\n{title}"
+            }
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*【変更内容】*\n{body}"
+            }
+        },
+        {
+            "type": "divider"
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"💡 *X投稿候補:* (文字数: {len(x_post_text)})"
+            }
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "plain_text",
+                "text": x_post_text
+            }
+        },
+        {
+            "type": "context",
+            "elements": [
+                {
+                    "type": "mrkdwn",
+                    "text": "📝 上記のテキストをコピーしてXに投稿してください"
+                }
+            ]
+        }
+    ]
 
     # Slackペイロード
     payload = {
-        "text": message,
+        "blocks": blocks,
         "username": "Release Bot",
         "icon_emoji": ":rocket:"
     }
