@@ -35,7 +35,7 @@ jobs:
           echo "Current version: $MAJOR.$MINOR.$PATCH"
 
           # ラベルに応じてバージョンをインクリメント
-          LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
+          LABELS="${{ toJson(github.event.pull_request.labels.*.name) }}"
 
           if echo "$LABELS" | grep -q "version:major"; then
             MAJOR=$((MAJOR + 1))
