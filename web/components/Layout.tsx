@@ -39,6 +39,18 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                             </div>
                         </Link>
                         <nav className="flex items-center gap-2 sm:gap-4">
+                            <Link
+                                href="/"
+                                className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-surface-100 text-surface-700 hover:text-surface-900 rounded-lg text-sm font-medium transition-colors"
+                            >
+                                <span>AI分析</span>
+                            </Link>
+                            <Link
+                                href="/stocks"
+                                className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-surface-100 text-surface-700 hover:text-surface-900 rounded-lg text-sm font-medium transition-colors"
+                            >
+                                <span>銘柄一覧</span>
+                            </Link>
                             <button
                                 onClick={() => setIsAboutModalOpen(true)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-100 hover:bg-surface-200 text-surface-700 hover:text-surface-900 rounded-lg text-sm font-medium transition-colors border border-surface-200"
