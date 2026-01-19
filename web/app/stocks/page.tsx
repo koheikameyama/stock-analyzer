@@ -9,6 +9,7 @@ import { Layout } from '@/components/Layout';
 import { StockListTable } from '@/components/StockListTable';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { AnalysisDetailModal } from '@/components/AnalysisDetailModal';
+import { AdBanner } from '@/components/AdBanner';
 import { useStocks, useSectors } from '@/hooks/useStocks';
 
 export default function StocksPage() {
@@ -75,6 +76,13 @@ export default function StocksPage() {
             気になる銘柄を検索して、AI分析をリクエストできます
           </p>
         </div>
+
+        {/* 広告エリア1: ヘッダー下 */}
+        <AdBanner
+          adSlot="7965940641"
+          adFormat="auto"
+          className="my-4"
+        />
 
         {/* フィルター */}
         <div className="bg-white p-6 rounded-xl border border-surface-200 shadow-sm">
@@ -188,6 +196,15 @@ export default function StocksPage() {
               stocks={stocks}
               onStockClick={handleStockClick}
             />
+
+            {/* 広告エリア2: テーブル後 */}
+            {stocks.length > 0 && (
+              <AdBanner
+                adSlot="5999264618"
+                adFormat="auto"
+                className="my-6"
+              />
+            )}
 
             {/* ページネーション */}
             {pagination && pagination.totalPages > 1 && (
