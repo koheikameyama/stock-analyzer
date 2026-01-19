@@ -185,6 +185,45 @@ N+1問題は、データベースクエリが必要以上に多く実行され�
 
 詳細は [N+1問題防止ガイド](./docs/n-plus-1-prevention.md) を参照してください。
 
+## UI/UXデザイン原則
+
+**スマホ表示を最優先に設計してください。**
+
+### モバイルファーストの原則
+
+1. **スマホでの表示を最初に考える**
+   - UIコンポーネントを設計する際は、まずスマホでの表示を確認
+   - 横幅が狭い画面でもレイアウトが崩れないように設計
+   - テキストやボタンが見切れないように配慮
+
+2. **レスポンシブデザインの必須項目**
+   - `flex-wrap` で自動改行を活用
+   - `whitespace-nowrap` と `flex-shrink-0` で重要な要素を保護
+   - `break-words` で長いテキストを適切に改行
+   - `gap-3` などで適切な余白を確保
+
+3. **実装時のチェックリスト**
+   - [ ] スマホ（375px幅）で表示が崩れないか？
+   - [ ] 長い企業名やテキストで要素が重ならないか？
+   - [ ] ツールチップが画面端で見切れないか？
+   - [ ] タッチ操作しやすいサイズか？（最小44x44px）
+
+### 具体例
+
+```tsx
+// ❌ 悪い例：スマホで崩れる
+<div className="flex justify-between items-start">
+  <h3>{longCompanyName}</h3>
+  <div>ステータス</div>
+</div>
+
+// ✅ 良い例：スマホでも崩れない
+<div className="flex justify-between items-start gap-3">
+  <h3 className="break-words">{longCompanyName}</h3>
+  <div className="whitespace-nowrap flex-shrink-0">ステータス</div>
+</div>
+```
+
 ## コミットメッセージ
 
 **コミットメッセージはシンプルに保ってください。**
