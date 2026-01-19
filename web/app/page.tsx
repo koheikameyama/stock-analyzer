@@ -78,7 +78,7 @@ export default function Home() {
               AIが分析した、おすすめの投資アイデアをチェックしましょう
             </p>
             <p className="text-xs text-surface-400 mt-2">
-              🕐 毎日18:00に自動更新
+              日経225採用の時価総額上位・主要セクター代表15銘柄を分析
             </p>
           </div>
 
