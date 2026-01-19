@@ -20,6 +20,16 @@ export interface AnalysisResult {
 }
 
 /**
+ * 分析データ（保存前）
+ */
+interface AnalysisData {
+  ticker: string;
+  stockInfo: any;
+  priceHistory: any[];
+  aiResult: any;
+}
+
+/**
  * 株式分析サービスクラス
  */
 export class AnalysisService {
@@ -151,44 +161,203 @@ export class AnalysisService {
   }
 
   /**
+   * 単一銘柄の分析データを取得（保存はしない）
+   * @param ticker ティッカーシンボル
+   * @returns 分析データ（成功時）またはnull（失敗時）
+   */
+  private static async fetchAnalysisData(
+    ticker: string
+  ): Promise<AnalysisData | null> {
+    try {
+      console.log(`🔍 ${ticker} の分析を開始...`);
+
+      // Yahoo Finance APIからデータ取得
+      const data = await YahooFinanceService.fetchStockWithHistory(ticker);
+
+      if (!data || !data.stockInfo) {
+        throw new Error('株価データの取得に失敗しました');
+      }
+
+      const { stockInfo, priceHistory } = data;
+
+      // OpenAI API で分析
+      if (!OpenAIService.checkApiKey()) {
+        throw new Error('OPENAI_API_KEYが設定されていません');
+      }
+
+      const analysisInput: StockAnalysisInput = {
+        ticker,
+        name: stockInfo.name,
+        currentPrice: stockInfo.price || 0,
+        sector: stockInfo.sector || null,
+        priceHistory: priceHistory.map((p) => ({
+          date: p.date.toISOString().split('T')[0],
+          close: p.close,
+        })),
+        peRatio: stockInfo.per || null,
+        pbRatio: stockInfo.pbr || null,
+        roe: stockInfo.roe || null,
+        dividendYield: stockInfo.dividendYield || null,
+      };
+
+      const aiResult = await OpenAIService.analyzeStock(analysisInput);
+
+      console.log(`✅ ${ticker} の分析完了 (推奨: ${aiResult.recommendation})`);
+
+      return {
+        ticker,
+        stockInfo,
+        priceHistory,
+        aiResult,
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`❌ ${ticker} の分析エラー:`, errorMessage);
+      return null;
+    }
+  }
+
+  /**
    * 複数銘柄の分析を実行（日本株のみ）
+   * データ取得と保存を分離し、一括保存することでDB接続を最小化
+   *
    * @param tickers ティッカーシンボルの配列
    * @param concurrency 同時実行数（デフォルト: 1）
    * @returns 分析結果の配列
    *
-   * 【注意】ループ内でanalyzeSingleStockを呼んでいますが、これは意図的です
-   * - 各銘柄ごとにYahoo Finance APIとOpenAI APIを呼ぶ必要がある
-   * - レート制限対策のため、5秒間隔で順次処理
-   * - バッチ処理（夜間実行）のため、パフォーマンスは問題なし
+   * 【N+1問題対策】
+   * - データ取得（API呼び出し）: ループで順次処理（レート制限対策）
+   * - データ保存: 全銘柄分を1つのトランザクションで一括保存
+   * - これによりDB接続時間を最小化し、接続プール枯渇を防止
    */
   static async analyzeMultipleStocks(
     tickers: string[],
     concurrency: number = 1
   ): Promise<AnalysisResult[]> {
-    const results: AnalysisResult[] = [];
-
     console.log(
       `📊 日本株${tickers.length}銘柄の分析を開始（同時実行数: ${concurrency}）...`
     );
 
-    // 順次処理（OpenAI APIとYahoo Finance APIのレート制限を考慮）
+    // ステップ1: 全銘柄のデータを取得（DB接続なし）
+    const analysisDataList: AnalysisData[] = [];
+
     for (let i = 0; i < tickers.length; i++) {
       const ticker = tickers[i];
-      const result = await this.analyzeSingleStock(ticker);
-      results.push(result);
+      const analysisData = await this.fetchAnalysisData(ticker);
+
+      if (analysisData) {
+        analysisDataList.push(analysisData);
+      }
 
       // 進捗表示
       if ((i + 1) % 5 === 0 || i === tickers.length - 1) {
-        const successCount = results.filter((r) => r.success).length;
-        const failureCount = results.filter((r) => !r.success).length;
         console.log(
-          `進捗: ${i + 1}/${tickers.length} (成功: ${successCount}, 失敗: ${failureCount})`
+          `進捗: ${i + 1}/${tickers.length} (成功: ${analysisDataList.length}, 失敗: ${i + 1 - analysisDataList.length})`
         );
       }
 
       // レート制限対策: 各分析の間に遅延（Yahoo Finance APIの429エラー対策）
       if (i < tickers.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, 5000)); // 5秒待機
+      }
+    }
+
+    // ステップ2: 全データを1つのトランザクションで一括保存
+    console.log(`💾 ${analysisDataList.length}銘柄のデータを一括保存中...`);
+
+    const results: AnalysisResult[] = [];
+
+    try {
+      await prisma.$transaction(
+        async (tx: any) => {
+          for (const data of analysisDataList) {
+            try {
+              // Stockレコードを取得または作成
+              const stock = await tx.stock.upsert({
+                where: { ticker: data.ticker },
+                update: {
+                  name: data.stockInfo.name,
+                  sector: data.stockInfo.sector,
+                },
+                create: {
+                  ticker: data.ticker,
+                  name: data.stockInfo.name,
+                  market: 'JP',
+                  sector: data.stockInfo.sector,
+                },
+              });
+
+              // Analysis作成
+              const analysis = await tx.analysis.create({
+                data: {
+                  stockId: stock.id,
+                  recommendation: data.aiResult.recommendation,
+                  confidenceScore: data.aiResult.confidence_score,
+                  reason: data.aiResult.reason,
+                  currentPrice: data.stockInfo.price,
+                  peRatio: data.stockInfo.per,
+                  pbRatio: data.stockInfo.pbr,
+                  roe: data.stockInfo.roe,
+                  dividendYield: data.stockInfo.dividendYield,
+                },
+              });
+
+              // PriceHistory一括削除・挿入
+              await tx.priceHistory.deleteMany({
+                where: {
+                  stockId: stock.id,
+                  date: {
+                    in: data.priceHistory.map((p) => p.date),
+                  },
+                },
+              });
+
+              await tx.priceHistory.createMany({
+                data: data.priceHistory.map((priceData) => ({
+                  stockId: stock.id,
+                  date: priceData.date,
+                  open: priceData.open,
+                  high: priceData.high,
+                  low: priceData.low,
+                  close: priceData.close,
+                  volume: priceData.volume,
+                })),
+              });
+
+              results.push({
+                ticker: data.ticker,
+                success: true,
+                analysisId: analysis.id,
+              });
+            } catch (error) {
+              const errorMessage =
+                error instanceof Error ? error.message : String(error);
+              console.error(`❌ ${data.ticker} の保存エラー:`, errorMessage);
+
+              results.push({
+                ticker: data.ticker,
+                success: false,
+                error: errorMessage,
+              });
+            }
+          }
+        },
+        {
+          timeout: 60000, // タイムアウトを60秒に設定
+        }
+      );
+    } catch (error) {
+      console.error('トランザクションエラー:', error);
+      // トランザクション全体が失敗した場合、全銘柄を失敗として記録
+      for (const data of analysisDataList) {
+        if (!results.find((r) => r.ticker === data.ticker)) {
+          results.push({
+            ticker: data.ticker,
+            success: false,
+            error: 'トランザクション失敗',
+          });
+        }
       }
     }
 
