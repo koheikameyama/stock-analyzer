@@ -18,9 +18,7 @@ export default function StocksPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [sector, setSector] = useState('');
-  const [hasAnalysis, setHasAnalysis] = useState<boolean | undefined>(
-    undefined
-  );
+  const [hasAnalysis, setHasAnalysis] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(
     null
@@ -33,7 +31,7 @@ export default function StocksPage() {
     limit: 50,
     search,
     sector,
-    hasAnalysis,
+    hasAnalysis: hasAnalysis ? true : undefined,
   });
 
   // 業種リスト取得
@@ -115,68 +113,50 @@ export default function StocksPage() {
 
             {/* フィルター */}
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* AI分析フィルター */}
-                <div>
-                  <label
-                    htmlFor="hasAnalysis"
-                    className="block text-sm font-medium text-surface-700 mb-2"
-                  >
-                    分析結果
-                  </label>
-                  <select
-                    id="hasAnalysis"
-                    value={
-                      hasAnalysis === undefined
-                        ? 'all'
-                        : hasAnalysis
-                        ? 'true'
-                        : 'false'
-                    }
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setHasAnalysis(
-                        value === 'all'
-                          ? undefined
-                          : value === 'true'
-                          ? true
-                          : false
-                      );
-                      setPage(1);
-                    }}
-                    className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  >
-                    <option value="all">すべて</option>
-                    <option value="true">分析結果あり</option>
-                    <option value="false">分析結果なし</option>
-                  </select>
-                </div>
+              {/* セクターフィルター */}
+              <div>
+                <label
+                  htmlFor="sector"
+                  className="block text-sm font-medium text-surface-700 mb-2"
+                >
+                  業種
+                </label>
+                <select
+                  id="sector"
+                  value={sector}
+                  onChange={(e) => {
+                    setSector(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="">すべて</option>
+                  {sectors.sectors?.map((s: string) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                {/* セクターフィルター */}
-                <div>
-                  <label
-                    htmlFor="sector"
-                    className="block text-sm font-medium text-surface-700 mb-2"
-                  >
-                    業種
-                  </label>
-                  <select
-                    id="sector"
-                    value={sector}
-                    onChange={(e) => {
-                      setSector(e.target.value);
-                      setPage(1);
-                    }}
-                    className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  >
-                    <option value="">すべて</option>
-                    {sectors.sectors?.map((s: string) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {/* AI分析ありチェックボックス */}
+              <div className="flex items-center gap-2">
+                <input
+                  id="hasAnalysis"
+                  type="checkbox"
+                  checked={hasAnalysis}
+                  onChange={(e) => {
+                    setHasAnalysis(e.target.checked);
+                    setPage(1);
+                  }}
+                  className="w-4 h-4 text-primary-600 border-surface-300 rounded focus:ring-2 focus:ring-primary-500"
+                />
+                <label
+                  htmlFor="hasAnalysis"
+                  className="text-sm font-medium text-surface-700 cursor-pointer"
+                >
+                  🤖 AI分析ありのみ表示
+                </label>
               </div>
             </div>
           </form>
