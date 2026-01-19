@@ -64,14 +64,11 @@ export default function PushNotificationToggle() {
     setIsLoading(true);
 
     try {
-      console.log('[Toggle] 1. 購読開始');
       // Service Workerの登録を待つ
       const registration = await navigator.serviceWorker.ready;
-      console.log('[Toggle] 2. Service Worker準備完了', registration);
 
       // 通知の許可をリクエスト
       const permission = await Notification.requestPermission();
-      console.log('[Toggle] 3. 通知許可:', permission);
 
       if (permission !== 'granted') {
         alert('通知の許可が必要です');
@@ -81,7 +78,6 @@ export default function PushNotificationToggle() {
 
       // VAPID公開鍵を取得
       const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      console.log('[Toggle] 4. VAPID公開鍵:', vapidPublicKey ? '設定済み' : '未設定');
       if (!vapidPublicKey) {
         console.error('VAPID公開鍵が設定されていません');
         alert('設定エラー: VAPID公開鍵が見つかりません');
@@ -89,15 +85,12 @@ export default function PushNotificationToggle() {
         return;
       }
 
-      console.log('[Toggle] 5. プッシュ購読開始');
       // プッシュ通知を購読
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
       });
-      console.log('[Toggle] 6. プッシュ購読完了', subscription);
 
-      console.log('[Toggle] 7. サーバーへ送信開始');
       // サーバーに購読情報を送信
       const response = await fetch('/api/push-notifications/subscribe', {
         method: 'POST',
@@ -106,19 +99,16 @@ export default function PushNotificationToggle() {
         },
         body: JSON.stringify(subscription.toJSON()),
       });
-      console.log('[Toggle] 8. サーバーレスポンス:', response.status);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`購読の保存に失敗しました: ${JSON.stringify(errorData)}`);
+        throw new Error('購読の保存に失敗しました');
       }
 
-      console.log('[Toggle] 9. 完了');
       setIsSubscribed(true);
       alert('プッシュ通知を有効にしました');
     } catch (error) {
-      console.error('[Toggle] エラー:', error);
-      alert(`プッシュ通知の有効化に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+      console.error('購読エラー:', error);
+      alert('プッシュ通知の有効化に失敗しました');
     } finally {
       setIsLoading(false);
     }

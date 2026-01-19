@@ -80,25 +80,21 @@ export const PushNotificationPromptModal: React.FC = () => {
     setIsLoading(true);
 
     try {
-      console.log('[Push] 1. Service Worker登録開始');
       // Service Workerを登録（10秒タイムアウト）
       const registration = await withTimeout(
         navigator.serviceWorker.register('/custom-sw.js', { scope: '/' }),
         10000,
         'Service Workerの登録がタイムアウトしました'
       );
-      console.log('[Push] 2. Service Worker登録完了', registration);
 
       await withTimeout(
         navigator.serviceWorker.ready,
         10000,
         'Service Workerの準備がタイムアウトしました'
       );
-      console.log('[Push] 3. Service Worker準備完了');
 
       // 通知の許可をリクエスト
       const permission = await Notification.requestPermission();
-      console.log('[Push] 4. 通知許可:', permission);
 
       if (permission !== 'granted') {
         localStorage.setItem('pushNotificationPromptClosed', 'true');
@@ -108,12 +104,10 @@ export const PushNotificationPromptModal: React.FC = () => {
 
       // VAPID公開鍵を取得
       const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      console.log('[Push] 5. VAPID公開鍵:', vapidPublicKey ? '設定済み' : '未設定');
       if (!vapidPublicKey) {
         throw new Error('VAPID公開鍵が設定されていません');
       }
 
-      console.log('[Push] 6. プッシュ購読開始');
       // プッシュ通知を購読（30秒タイムアウト）
       const subscription = await withTimeout(
         registration.pushManager.subscribe({
@@ -123,9 +117,7 @@ export const PushNotificationPromptModal: React.FC = () => {
         30000,
         'プッシュ通知の購読がタイムアウトしました'
       );
-      console.log('[Push] 7. プッシュ購読完了', subscription);
 
-      console.log('[Push] 8. サーバーへ送信開始');
       // サーバーに購読情報を送信（10秒タイムアウト）
       const response = await withTimeout(
         fetch('/api/push-notifications/subscribe', {
@@ -138,14 +130,11 @@ export const PushNotificationPromptModal: React.FC = () => {
         10000,
         'サーバーへの送信がタイムアウトしました'
       );
-      console.log('[Push] 9. サーバーレスポンス:', response.status);
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(`購読の保存に失敗しました: ${JSON.stringify(errorData)}`);
       }
-
-      console.log('[Push] 10. 完了');
 
       localStorage.setItem('pushNotificationPromptClosed', 'true');
       setIsOpen(false);
