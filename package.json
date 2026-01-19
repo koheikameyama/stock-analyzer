@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.2.0",
+    "normalize-path": "^3.0.0",
     "web-push": "^3.6.7"
   }
 }
