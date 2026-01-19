@@ -67,14 +67,33 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
+          # PR本文から「リリースノート（ユーザー向け）」セクションを抽出
+          RELEASE_NOTES=$(echo "$PR_BODY" | awk '
+            /^## リリースノート（ユーザー向け）/ {flag=1; next}
+            /^## / {flag=0}
+            flag && /^[^<]/ {print}
+          ' | sed '/^$/d' | sed '/^-$/d')
+
+          # リリースノートが空の場合は「概要」をフォールバック
+          if [ -z "$RELEASE_NOTES" ]; then
+            RELEASE_NOTES=$(echo "$PR_BODY" | awk '
+              /^## 概要/ {flag=1; next}
+              /^## / {flag=0}
+              flag && /^[^<]/ {print}
+            ' | sed '/^$/d')
+          fi
+
+          # リリースノートがまだ空の場合はPRタイトルを使用
+          if [ -z "$RELEASE_NOTES" ]; then
+            RELEASE_NOTES="$PR_TITLE"
+          fi
+
           # リリースノート作成
           cat >> $GITHUB_OUTPUT <<EOF
           release_body<<RELEASE_EOF
           ## Changes
 
-          $PR_TITLE
-
-          $PR_BODY
+          $RELEASE_NOTES
 
           ---
           **Full Changelog**: [#$PR_NUMBER]($PR_URL)
