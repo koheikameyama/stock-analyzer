@@ -312,8 +312,8 @@ def save_analysis_to_db(conn, stock_id: str, stock_data: StockData, analysis: Di
     """
     try:
         with conn.cursor() as cur:
-            # 日本時間で現在時刻を取得
-            now = datetime.now(ZoneInfo("Asia/Tokyo"))
+            # UTC時刻を取得（フロントエンドで日本時間に変換）
+            now = datetime.now(timezone.utc)
 
             # 既存の分析データを確認
             cur.execute("""
@@ -475,10 +475,11 @@ def process_single_stock(stock: Dict[str, Any], force: bool = False) -> bool:
         # 今日の分析データが既に存在するかチェック（forceフラグがfalseの場合のみ）
         if not force:
             with conn.cursor() as cur:
+                # analysisDateはUTC保存なので、日本時間に変換して日付比較
                 cur.execute("""
                     SELECT id FROM analyses
                     WHERE "stockId" = %s
-                    AND DATE("analysisDate") = %s
+                    AND DATE("analysisDate" AT TIME ZONE 'Asia/Tokyo') = %s
                 """, (stock['id'], today))
                 existing_today = cur.fetchone()
 
@@ -545,8 +546,8 @@ def log_batch_job(conn, start_time: datetime, total_stocks: int, success_count: 
         with conn.cursor() as cur:
             # UUID生成
             log_id = str(uuid.uuid4())
-            # 日本時間で現在時刻を取得
-            now = datetime.now(ZoneInfo("Asia/Tokyo"))
+            # UTC時刻を取得（フロントエンドで日本時間に変換）
+            now = datetime.now(timezone.utc)
 
             cur.execute("""
                 INSERT INTO batch_job_logs (
