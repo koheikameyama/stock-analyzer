@@ -94,13 +94,9 @@ jobs:
           # リリースノート作成
           cat >> $GITHUB_OUTPUT <<EOF
           release_body<<RELEASE_EOF
-          ## Changes
+          ## 更新内容
 
           $RELEASE_NOTES
-
-          ---
-          **Full Changelog**: [#$PR_NUMBER]($PR_URL)
-          **Author**: @$AUTHOR
           RELEASE_EOF
           EOF
 

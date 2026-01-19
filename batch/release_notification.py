@@ -26,22 +26,22 @@ def generate_x_post(title: str, body: str) -> str:
     lines = body.split('\n')
     features = []
 
-    # "## Changes"セクションがあるかチェック
-    has_changes_section = any('## Changes' in line for line in lines)
+    # "## 更新内容"セクションがあるかチェック
+    has_changes_section = any('## 更新内容' in line for line in lines)
 
     if has_changes_section:
-        # "## Changes"セクション内の箇条書きを抽出
+        # "## 更新内容"セクション内の箇条書きを抽出
         in_changes = False
         for line in lines:
             stripped = line.strip()
-            if stripped.startswith('## Changes'):
+            if stripped.startswith('## 更新内容'):
                 in_changes = True
                 continue
             elif (stripped.startswith('---') or stripped.startswith('##')) and in_changes:
                 break
             elif in_changes and stripped.startswith('-'):
                 feature = stripped.lstrip('-').strip()
-                if feature and not feature.startswith('**Full') and not feature.startswith('**Author'):
+                if feature:
                     features.append(feature)
     else:
         # セクションなしの場合、全ての箇条書きを抽出
