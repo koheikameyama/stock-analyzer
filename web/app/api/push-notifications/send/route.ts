@@ -4,21 +4,17 @@ import webpush from 'web-push';
 
 const prisma = new PrismaClient();
 
-// VAPID設定
-const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
-const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:example@yourdomain.com';
-
-if (vapidPublicKey && vapidPrivateKey) {
-  webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
-}
-
 /**
  * プッシュ通知送信API
  * すべての購読者に通知を送信する
  */
 export async function POST(request: NextRequest) {
   try {
+    // VAPID設定
+    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+    const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:example@yourdomain.com';
+
     // VAPID鍵が設定されているか確認
     if (!vapidPublicKey || !vapidPrivateKey) {
       return NextResponse.json(
@@ -26,6 +22,9 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // VAPID設定を実行時に行う
+    webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
     const body = await request.json();
     const { title, body: notificationBody, url } = body;
