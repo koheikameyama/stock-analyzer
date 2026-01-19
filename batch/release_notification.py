@@ -22,47 +22,46 @@ def generate_x_post(title: str, body: str) -> str:
     Returns:
         str: X投稿テキスト
     """
-    # 主要な新機能を抽出（最初の## ✨ 新機能セクション）
+    # "## Changes"セクション内の箇条書きを抽出
     lines = body.split('\n')
     features = []
-    in_features = False
+    in_changes = False
 
     for line in lines:
-        if '## ✨ 新機能' in line or '##✨ 新機能' in line:
-            in_features = True
+        stripped = line.strip()
+        # "## Changes"セクションを探す
+        if stripped.startswith('## Changes'):
+            in_changes = True
             continue
-        elif line.startswith('##') and in_features:
+        # 次のセクション（---や##）が来たら終了
+        elif (stripped.startswith('---') or stripped.startswith('##')) and in_changes:
             break
-        elif in_features and line.strip().startswith('-'):
-            # 最初の: までを取得（簡潔に）
-            feature = line.strip().lstrip('-').strip()
-            if ':' in feature:
-                feature = feature.split(':')[0]
-            elif '**' in feature:
-                # **で囲まれた部分を抽出
-                import re
-                match = re.search(r'\*\*(.+?)\*\*', feature)
-                if match:
-                    feature = match.group(1)
-            features.append(feature)
+        # 箇条書き行を抽出
+        elif in_changes and stripped.startswith('-'):
+            # "- " を除去して取得
+            feature = stripped.lstrip('-').strip()
+            # 空行や不要な内容をスキップ
+            if feature and not feature.startswith('**Full') and not feature.startswith('**Author'):
+                features.append(feature)
 
     # X投稿テキスト生成（140文字以内）
     base_text = f"🎉 {title}リリース\n\n"
-    url = "https://stock-analyzer.jp/\n\n#AI株式分析 #投資ツール"
+    url = "\n\nhttps://stock-analyzer.jp/\n\n#AI株式分析 #投資ツール"
 
     # 残り文字数を計算
     remaining = 140 - len(base_text) - len(url)
 
     # 新機能を追加（文字数制限内で）
     feature_text = ""
-    for i, feature in enumerate(features[:3], 1):  # 最大3つまで
-        line = f"✅ {feature}\n"
-        if len(feature_text) + len(line) <= remaining - 3:  # "..." の余裕
+    for feature in features[:3]:  # 最大3つまで
+        # そのまま使用（絵文字が既に含まれている）
+        line = f"{feature}\n"
+        if len(feature_text) + len(line) <= remaining:
             feature_text += line
         else:
             break
 
-    return base_text + feature_text + "\n" + url
+    return base_text + feature_text + url
 
 
 def send_slack_notification(
