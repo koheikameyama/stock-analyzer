@@ -20,10 +20,10 @@ const nextConfig: NextConfig = {
 // PWA設定
 const pwaConfig = withPWA({
   dest: 'public',
-  register: true,
+  register: false, // 手動で登録するため無効化
   skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development', // 開発環境では無効化
-  sw: 'sw.js', // カスタムService Workerを使用
+  disable: false, // 開発環境でも有効化（push通知テストのため）
+  sw: 'sw.js',
   scope: '/',
 })(nextConfig);
 
