@@ -1,3 +1,7 @@
 name = "stock-analyzer"
 compatibility_date = "2025-01-19"
-pages_build_output_dir = "web/.worker-next/dist"
+compatibility_flags = ["nodejs_compat"]
+main = "web/.open-next/worker.js"
+
+[assets]
+directory = "web/.open-next/assets"

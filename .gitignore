@@ -53,6 +53,10 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 
+# OpenNext Cloudflare
+.open-next/
+.dev.vars
+
 # PWA
 **/public/sw.js
 **/public/workbox-*.js
