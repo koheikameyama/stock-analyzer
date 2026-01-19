@@ -208,40 +208,35 @@ export class AnalysisService {
   static async getLatestAnalyses(
     recommendation?: 'Buy' | 'Sell' | 'Hold'
   ) {
-    // 1. 対象銘柄を取得（日本株のみ）
-    const stocks = await prisma.stock.findMany({
-      where: { market: 'JP' },
-      select: { id: true, ticker: true, name: true, market: true, sector: true },
+    // 最適化: 1つのクエリで全ての分析結果を取得
+    const allAnalyses = await prisma.analysis.findMany({
+      where: {
+        stock: { market: 'JP' },
+        ...(recommendation && { recommendation }),
+      },
+      include: {
+        stock: {
+          select: {
+            ticker: true,
+            name: true,
+            market: true,
+            sector: true,
+          },
+        },
+      },
+      orderBy: { analysisDate: 'desc' },
     });
 
-    // 2. 各銘柄の最新分析を取得
-    const latestAnalyses = await Promise.all(
-      stocks.map(async (stock: any) => {
-        const analysis = await prisma.analysis.findFirst({
-          where: {
-            stockId: stock.id,
-            ...(recommendation && { recommendation }),
-          },
-          orderBy: { analysisDate: 'desc' },
-        });
+    // 各銘柄の最新の分析のみを抽出
+    const latestByStock = new Map<string, typeof allAnalyses[0]>();
+    for (const analysis of allAnalyses) {
+      if (!latestByStock.has(analysis.stockId)) {
+        latestByStock.set(analysis.stockId, analysis);
+      }
+    }
 
-        if (!analysis) return null;
-
-        return {
-          ...analysis,
-          stock: {
-            ticker: stock.ticker,
-            name: stock.name,
-            market: stock.market,
-            sector: stock.sector,
-          },
-        };
-      })
-    );
-
-    // 3. nullを除外してconfidenceScoreでソート
-    return latestAnalyses
-      .filter((a): a is NonNullable<typeof a> => a !== null)
+    // confidenceScoreでソートして返す
+    return Array.from(latestByStock.values())
       .sort((a, b) => b.confidenceScore - a.confidenceScore);
   }
 
