@@ -22,10 +22,17 @@ model Stock {
   name   String
   market String // 'JP' または 'US'
   sector String?
+  industry String? // 業種（セクターより詳細）
+
+  // AI分析対象フラグ
+  isAiAnalysisTarget Boolean @default(false) @map("is_ai_analysis_target")
+
+  // 財務指標
+  marketCap Decimal? @map("market_cap") // 時価総額
 
   // タイムスタンプ
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // リレーション
   analyses     Analysis[]
@@ -34,6 +41,7 @@ model Stock {
   // インデックス
   @@index([market])
   @@index([sector])
+  @@index([isAiAnalysisTarget])
   @@map("stocks")
 }
 
