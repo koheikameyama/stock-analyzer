@@ -14,6 +14,7 @@ interface Stock {
   industry: string | null;
   isAiAnalysisTarget: boolean;
   marketCap: number | null;
+  requestCount?: number;
   latestAnalysis: {
     id: string;
     recommendation: 'Buy' | 'Sell' | 'Hold';
@@ -25,12 +26,13 @@ interface Stock {
 interface StockListTableProps {
   stocks: Stock[];
   onStockClick?: (stock: Stock) => void;
+  onRequestAnalysis?: (stock: Stock) => void;
 }
 
 /**
  * 銘柄一覧テーブル
  */
-export function StockListTable({ stocks, onStockClick }: StockListTableProps) {
+export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: StockListTableProps) {
   const [sortBy, setSortBy] = useState<
     'ticker' | 'name' | 'sector' | 'confidence'
   >('ticker');
@@ -100,12 +102,12 @@ export function StockListTable({ stocks, onStockClick }: StockListTableProps) {
 
   return (
     <div className="bg-white rounded-xl border border-surface-200 shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-surface-200">
+      <div className="overflow-x-auto sm:overflow-visible">
+        <table className="w-full divide-y divide-surface-200">
           <thead className="bg-surface-50">
             <tr>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100"
+                className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100"
                 onClick={() => handleSort('ticker')}
               >
                 <div className="flex items-center gap-1">
@@ -116,7 +118,7 @@ export function StockListTable({ stocks, onStockClick }: StockListTableProps) {
                 </div>
               </th>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100"
+                className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100"
                 onClick={() => handleSort('name')}
               >
                 <div className="flex items-center gap-1">
@@ -127,7 +129,7 @@ export function StockListTable({ stocks, onStockClick }: StockListTableProps) {
                 </div>
               </th>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100"
+                className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100"
                 onClick={() => handleSort('sector')}
               >
                 <div className="flex items-center gap-1">
@@ -137,11 +139,11 @@ export function StockListTable({ stocks, onStockClick }: StockListTableProps) {
                   )}
                 </div>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
+              <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                 AI分析
               </th>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100"
+                className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100"
                 onClick={() => handleSort('confidence')}
               >
                 <div className="flex items-center gap-1">
@@ -151,41 +153,43 @@ export function StockListTable({ stocks, onStockClick }: StockListTableProps) {
                   )}
                 </div>
               </th>
+              <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider w-24 sm:w-auto">
+                アクション
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-surface-200">
             {sortedStocks.map((stock) => (
               <tr
                 key={stock.id}
-                className="hover:bg-surface-50 transition-colors cursor-pointer"
-                onClick={() => onStockClick?.(stock)}
+                className="hover:bg-surface-50 transition-colors"
               >
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-surface-900">
+                <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-surface-900">
                   {stock.ticker}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-surface-900">
+                <td className="px-2 sm:px-6 py-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                    <span className="text-xs sm:text-sm font-medium text-surface-900">
                       {stock.name}
                     </span>
                     {stock.isAiAnalysisTarget && (
-                      <span className="px-1.5 py-0.5 text-xs font-semibold rounded bg-blue-100 text-blue-800">
+                      <span className="px-1.5 py-0.5 text-xs font-semibold rounded bg-blue-100 text-blue-800 w-fit">
                         AI対象
                       </span>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
+                <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-surface-500">
                   {stock.sector || '-'}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
+                <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-surface-500">
                   {stock.isAiAnalysisTarget ? (
                     <span className="text-emerald-600">✓ 対象</span>
                   ) : (
                     <span className="text-surface-400">対象外</span>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                   {stock.latestAnalysis ? (
                     <div className="flex items-center gap-2">
                       {getRecommendationBadge(
@@ -200,6 +204,36 @@ export function StockListTable({ stocks, onStockClick }: StockListTableProps) {
                       分析結果なし
                     </span>
                   )}
+                </td>
+                <td className="px-2 sm:px-6 py-4 w-24 sm:w-auto">
+                  <div className="flex flex-col items-center gap-1">
+                    {/* 詳細を見るボタン */}
+                    {stock.latestAnalysis ? (
+                      <button
+                        onClick={() => onStockClick?.(stock)}
+                        className="text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-medium"
+                      >
+                        詳細
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRequestAnalysis?.(stock);
+                        }}
+                        className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded transition-colors"
+                      >
+                        リクエスト
+                      </button>
+                    )}
+
+                    {/* リクエスト数表示 */}
+                    {stock.requestCount && stock.requestCount > 0 && (
+                      <span className="text-xs text-surface-500">
+                        {stock.requestCount}人
+                      </span>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
