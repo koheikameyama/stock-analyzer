@@ -149,7 +149,7 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
                 </div>
               </th>
               <th
-                className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100"
+                className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 w-32"
                 onClick={() => handleSort('sector')}
               >
                 <div className="flex items-center gap-1">
@@ -213,7 +213,7 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
                     )}
                   </div>
                 </td>
-                <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-surface-500">
+                <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-surface-500 w-32">
                   {stock.sector || '-'}
                 </td>
                 <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-surface-500">
