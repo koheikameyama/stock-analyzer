@@ -185,6 +185,13 @@ N+1問題は、データベースクエリが必要以上に多く実行され�
 
 詳細は [N+1問題防止ガイド](./docs/n-plus-1-prevention.md) を参照してください。
 
+## コミットメッセージ
+
+**コミットメッセージには`Co-Authored-By: Claude`を含めないでください。**
+
+- コミットメッセージの最後に`Co-Authored-By: Claude <noreply@anthropic.com>`を含めない
+- 🤖 Generated with [Claude Code]のリンクは含めてOK
+
 ## 例外
 
 - コード自体（変数名、関数名、クラス名など）は英語で記述する
