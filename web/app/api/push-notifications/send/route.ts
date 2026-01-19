@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import webpush from 'web-push';
-
-const prisma = new PrismaClient();
 
 /**
  * プッシュ通知送信API
@@ -107,7 +105,5 @@ export async function POST(request: NextRequest) {
       { error: '通知の送信に失敗しました' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
