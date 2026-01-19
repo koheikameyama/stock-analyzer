@@ -51,29 +51,29 @@ model Analysis {
   id String @id @default(uuid())
 
   // 外部キー - Stock
-  stockId String
+  stockId String @map("stock_id")
   stock   Stock  @relation(fields: [stockId], references: [id], onDelete: Cascade)
 
   // 分析日時
-  analysisDate DateTime @default(now())
+  analysisDate DateTime @default(now()) @map("analysis_date")
 
   // AI推奨
   recommendation  String // 'Buy', 'Sell', 'Hold'
-  confidenceScore Int // 0-100
+  confidenceScore Int @map("confidence_score") // 0-100
 
   // 推奨理由
   reason String // 推奨理由（300文字程度）
 
   // 分析時の株価・財務指標
-  currentPrice  Float?
-  peRatio       Float?
-  pbRatio       Float?
+  currentPrice  Float? @map("current_price")
+  peRatio       Float? @map("pe_ratio")
+  pbRatio       Float? @map("pb_ratio")
   roe           Float?
-  dividendYield Float?
+  dividendYield Float? @map("dividend_yield")
 
   // タイムスタンプ
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // インデックス
   @@index([stockId, analysisDate])
@@ -88,7 +88,7 @@ model PriceHistory {
   id String @id @default(uuid())
 
   // 外部キー - Stock
-  stockId String
+  stockId String @map("stock_id")
   stock   Stock  @relation(fields: [stockId], references: [id], onDelete: Cascade)
 
   // 日付と株価データ
@@ -100,8 +100,8 @@ model PriceHistory {
   volume Int
 
   // タイムスタンプ
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // ユニーク制約とインデックス
   @@unique([stockId, date])
@@ -115,16 +115,16 @@ model BatchJobLog {
   id String @id @default(uuid())
 
   // ジョブ情報
-  jobDate      DateTime
+  jobDate      DateTime @map("job_date")
   status       String // 'success', 'partial_success', 'failure'
-  totalStocks  Int
-  successCount Int
-  failureCount Int
-  errorMessage String?
+  totalStocks  Int @map("total_stocks")
+  successCount Int @map("success_count")
+  failureCount Int @map("failure_count")
+  errorMessage String? @map("error_message")
   duration     Int // ミリ秒
 
   // タイムスタンプ
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
   // インデックス
   @@index([jobDate])
@@ -142,8 +142,8 @@ model PushSubscription {
   auth     String // 認証シークレット
 
   // タイムスタンプ
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // インデックス
   @@index([endpoint])

@@ -83,27 +83,19 @@ def main():
         print_color(Colors.GREEN, "   ✓ ローカルDB接続成功")
         print()
 
-        # テーブル定義（prod_columns: 本番DB, local_columns: ローカルDB）
+        # テーブル定義（全て統一されたスネークケース）
         tables = [
-            ('stocks',
-             ['id', 'ticker', 'name', 'market', 'sector', 'industry', 'is_ai_analysis_target', 'market_cap', '"createdAt"', '"updatedAt"'],
-             ['id', 'ticker', 'name', 'market', 'sector', 'industry', 'is_ai_analysis_target', 'market_cap', 'created_at', 'updated_at']),
-            ('analyses',
-             ['id', 'stock_id', 'analysis_date', 'recommendation', 'confidence_score', 'reason', 'current_price', 'pe_ratio', 'pb_ratio', 'roe', 'dividend_yield', 'created_at', 'updated_at'],
-             ['id', 'stock_id', 'analysis_date', 'recommendation', 'confidence_score', 'reason', 'current_price', 'pe_ratio', 'pb_ratio', 'roe', 'dividend_yield', 'created_at', 'updated_at']),
-            ('price_history',
-             ['id', 'stock_id', 'date', 'open', 'high', 'low', 'close', 'volume', 'created_at', 'updated_at'],
-             ['id', 'stock_id', 'date', 'open', 'high', 'low', 'close', 'volume', 'created_at', 'updated_at']),
-            ('batch_job_logs',
-             ['id', 'job_date', 'status', 'total_stocks', 'success_count', 'failure_count', 'error_message', 'duration', 'created_at'],
-             ['id', 'job_date', 'status', 'total_stocks', 'success_count', 'failure_count', 'error_message', 'duration', 'created_at']),
+            ('stocks', ['id', 'ticker', 'name', 'market', 'sector', 'industry', 'is_ai_analysis_target', 'market_cap', 'created_at', 'updated_at']),
+            ('analyses', ['id', 'stock_id', 'analysis_date', 'recommendation', 'confidence_score', 'reason', 'current_price', 'pe_ratio', 'pb_ratio', 'roe', 'dividend_yield', 'created_at', 'updated_at']),
+            ('price_history', ['id', 'stock_id', 'date', 'open', 'high', 'low', 'close', 'volume', 'created_at', 'updated_at']),
+            ('batch_job_logs', ['id', 'job_date', 'status', 'total_stocks', 'success_count', 'failure_count', 'error_message', 'duration', 'created_at']),
         ]
 
         # データ同期
         print_color(Colors.GREEN, "3. データを同期中...")
         total_rows = 0
-        for table_name, prod_columns, local_columns in tables:
-            count = sync_table(prod_cursor, local_cursor, table_name, prod_columns, local_columns)
+        for table_name, columns in tables:
+            count = sync_table(prod_cursor, local_cursor, table_name, columns, columns)
             total_rows += count
 
         # コミット
