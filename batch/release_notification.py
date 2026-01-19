@@ -54,7 +54,7 @@ def generate_x_post(title: str, body: str) -> str:
 
     # 各項目を簡潔に変換
     def shorten_feature(feature: str) -> str:
-        """項目を簡潔に変換"""
+        """項目を簡潔に変換（絵文字はそのまま保持）"""
         # "新機能:" や "改善:" の部分を削除
         feature = feature.replace('新機能:', '').replace('改善:', '').replace('修正:', '')
         # "〜を" や "〜が" などの助詞を削除してさらに簡潔に
@@ -75,9 +75,7 @@ def generate_x_post(title: str, body: str) -> str:
     for feature in features[:3]:  # 最大3つまで
         # まず簡潔版を試す
         shortened = shorten_feature(feature)
-        # 絵文字部分を保持
-        emoji = feature.split()[0] if feature.split() else ""
-        short_line = f"{emoji} {shortened}\n" if emoji else f"{shortened}\n"
+        short_line = f"{shortened}\n"
 
         # 簡潔版で入るかチェック
         if len(feature_text) + len(short_line) <= remaining:
