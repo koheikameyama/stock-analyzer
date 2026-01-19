@@ -86,8 +86,7 @@ export default function RootLayout({
         <Providers>{children}</Providers>
         <InstallPrompt />
         <ReleaseNoteModal />
-        {/* 一時的に無効化: データベース接続プールの問題を調査中 */}
-        {/* <PushNotificationPromptModal /> */}
+        <PushNotificationPromptModal />
       </body>
     </html>
   );
