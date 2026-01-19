@@ -268,7 +268,10 @@ export const StockChart: React.FC<StockChartProps> = ({ data, ticker }) => {
 
       {/* メインチャート（ローソク足 + 移動平均線） */}
       <div className="bg-white rounded-xl border border-surface-200 shadow-sm p-4">
-        <h4 className="text-sm font-semibold text-surface-900 mb-3">株価推移</h4>
+        <h4 className="text-sm font-semibold text-surface-900 mb-3 flex items-center gap-1">
+          株価推移（ローソク足）
+          <InfoTooltip content="ローソク足チャートは1日の値動きを1本のローソク（実体と髭）で表します。緑は上昇（終値>始値）、赤は下落（終値<始値）を示します。上下の髭は高値・安値を示し、実体が長いほど値動きが大きく、髭が長いほど売買が活発だったことを意味します。" />
+        </h4>
         <ResponsiveContainer width="100%" height={400}>
           <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
@@ -336,7 +339,10 @@ export const StockChart: React.FC<StockChartProps> = ({ data, ticker }) => {
 
       {/* 出来高チャート */}
       <div className="bg-white rounded-xl border border-surface-200 shadow-sm p-4">
-        <h4 className="text-sm font-semibold text-surface-900 mb-3">出来高</h4>
+        <h4 className="text-sm font-semibold text-surface-900 mb-3 flex items-center gap-1">
+          出来高
+          <InfoTooltip content="出来高は、その日に取引された株式の数量を示します。出来高が多いほど取引が活発で、株価の動きに信頼性が高まります。出来高を伴う株価上昇は本物のトレンド、出来高が少ない上昇は警戒が必要です。" />
+        </h4>
         <ResponsiveContainer width="100%" height={150}>
           <ComposedChart data={chartData} margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
