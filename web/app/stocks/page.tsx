@@ -264,13 +264,12 @@ export default function StocksPage() {
             {/* ページネーション */}
             {pagination && pagination.totalPages > 1 && (
               <div className="flex justify-center gap-2">
-                {/* スマホでは非表示 */}
                 <button
                   onClick={() => handlePageChange(page - 1)}
                   disabled={!pagination.hasPrevPage}
-                  className="hidden md:block px-4 py-2 border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  ← 前へ
+                  <span className="hidden md:inline">← </span>前へ
                 </button>
                 <div className="flex items-center gap-1">
                   {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
@@ -302,13 +301,12 @@ export default function StocksPage() {
                       );
                     })}
                 </div>
-                {/* スマホでは非表示 */}
                 <button
                   onClick={() => handlePageChange(page + 1)}
                   disabled={!pagination.hasNextPage}
-                  className="hidden md:block px-4 py-2 border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  次へ →
+                  次へ<span className="hidden md:inline"> →</span>
                 </button>
               </div>
             )}
