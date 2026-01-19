@@ -64,7 +64,7 @@ def generate_x_post(title: str, body: str) -> str:
         return feature.strip()
 
     # X投稿テキスト生成（140文字以内）
-    base_text = f"🎉 {title}\n\n"
+    base_text = f"🎉 {title}リリース\n\n"
     url = "\n\nhttps://stock-analyzer.jp/\n\n#AI株式分析 #投資ツール"
 
     # 残り文字数を計算
