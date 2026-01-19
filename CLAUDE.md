@@ -187,10 +187,11 @@ N+1問題は、データベースクエリが必要以上に多く実行され�
 
 ## コミットメッセージ
 
-**コミットメッセージには`Co-Authored-By: Claude`を含めないでください。**
+**コミットメッセージはシンプルに保ってください。**
 
 - コミットメッセージの最後に`Co-Authored-By: Claude <noreply@anthropic.com>`を含めない
-- 🤖 Generated with [Claude Code]のリンクは含めてOK
+- 🤖 Generated with [Claude Code]のリンクも含めない
+- 変更内容を簡潔に記述するだけでOK
 
 ## 例外
 
