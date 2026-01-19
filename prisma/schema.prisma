@@ -122,3 +122,22 @@ model BatchJobLog {
   @@index([jobDate])
   @@map("batch_job_logs")
 }
+
+// プッシュ通知購読モデル
+model PushSubscription {
+  // 主キー
+  id String @id @default(uuid())
+
+  // プッシュ通知購読情報
+  endpoint String @unique
+  p256dh   String // 公開鍵（暗号化用）
+  auth     String // 認証シークレット
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // インデックス
+  @@index([endpoint])
+  @@map("push_subscriptions")
+}

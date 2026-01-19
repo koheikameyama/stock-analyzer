@@ -23,6 +23,8 @@ const pwaConfig = withPWA({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development', // 開発環境では無効化
+  sw: 'sw.js', // カスタムService Workerを使用
+  scope: '/',
 })(nextConfig);
 
 export default pwaConfig;
