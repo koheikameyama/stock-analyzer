@@ -9,7 +9,7 @@ import type { AnalysisDetail, Recommendation } from '../types/analysis';
 import { useAnalysisDetail } from '../hooks/useAnalyses';
 import { LoadingSpinner } from './LoadingSpinner';
 import { Tooltip as InfoTooltip } from './Tooltip';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { StockChart } from './StockChart';
 
 interface AnalysisDetailModalProps {
   analysisId?: string | null;
@@ -28,7 +28,11 @@ interface StockData {
   dividendYield?: number;
   priceHistory?: Array<{
     date: string;
+    open: number;
+    high: number;
+    low: number;
     close: number;
+    volume: number;
   }>;
 }
 
@@ -112,24 +116,26 @@ export const AnalysisDetailModal: React.FC<AnalysisDetailModalProps> = ({
 
   if (!analysisId && !ticker) return null;
 
-  // 株価チャート用のデータ整形
+  // 株価チャート用のデータ整形（OHLCと出来高を含む）
   const chartData = analysis?.stock.priceHistory
     ? [...analysis.stock.priceHistory]
       .reverse()
       .map((history) => ({
-        date: new Date(history.date).toLocaleDateString('ja-JP', {
-          month: 'numeric',
-          day: 'numeric',
-        }),
-        終値: parseFloat(history.close.toString()),
+        date: history.date,
+        open: parseFloat(history.open.toString()),
+        high: parseFloat(history.high.toString()),
+        low: parseFloat(history.low.toString()),
+        close: parseFloat(history.close.toString()),
+        volume: parseInt(history.volume.toString()),
       }))
     : stockData?.priceHistory
     ? stockData.priceHistory.map((history) => ({
-        date: new Date(history.date).toLocaleDateString('ja-JP', {
-          month: 'numeric',
-          day: 'numeric',
-        }),
-        終値: parseFloat(history.close.toString()),
+        date: history.date,
+        open: history.open,
+        high: history.high,
+        low: history.low,
+        close: history.close,
+        volume: history.volume,
       }))
     : [];
 
@@ -316,39 +322,16 @@ export const AnalysisDetailModal: React.FC<AnalysisDetailModalProps> = ({
               {/* Chart */}
               {chartData.length > 0 && (
                 <div>
-                  <h4 className="text-lg font-bold text-surface-900 mb-3">株価推移（30日間）</h4>
-                  <div className="bg-white rounded-xl p-4 border border-surface-200 shadow-sm h-[320px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis
-                          dataKey="date"
-                          tick={{ fontSize: 12, fill: '#64748b' }}
-                          axisLine={false}
-                          tickLine={false}
-                          dy={10}
-                        />
-                        <YAxis
-                          tick={{ fontSize: 12, fill: '#64748b' }}
-                          axisLine={false}
-                          tickLine={false}
-                          dx={-10}
-                        />
-                        <Tooltip
-                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="終値"
-                          name="終値"
-                          stroke="#6366f1"
-                          strokeWidth={2}
-                          dot={false}
-                          activeDot={{ r: 6, fill: '#6366f1', strokeWidth: 0 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <h4 className="text-lg font-bold text-surface-900 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                    </svg>
+                    株価チャート
+                  </h4>
+                  <StockChart
+                    data={chartData}
+                    ticker={analysis?.stock.ticker || stockData?.ticker || ''}
+                  />
                 </div>
               )}
             </div>
