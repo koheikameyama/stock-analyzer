@@ -36,13 +36,13 @@ def get_latest_analyses(conn) -> List[Dict]:
                 s.ticker,
                 s.name,
                 a.recommendation,
-                a."confidenceScore",
+                a.confidence_score,
                 a.reason,
-                a."analysisDate"
+                a.analysis_date
             FROM analyses a
-            JOIN stocks s ON a."stockId" = s.id
-            WHERE a."analysisDate" >= NOW() - INTERVAL '7 days'
-            ORDER BY a."confidenceScore" DESC
+            JOIN stocks s ON a.stock_id = s.id
+            WHERE a.analysis_date >= NOW() - INTERVAL '7 days'
+            ORDER BY a.confidence_score DESC
         """)
         return cur.fetchall()
 

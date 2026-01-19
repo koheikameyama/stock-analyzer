@@ -317,7 +317,7 @@ def save_analysis_to_db(conn, stock_id: str, stock_data: StockData, analysis: Di
 
             # 既存の分析データを確認
             cur.execute("""
-                SELECT id FROM analyses WHERE "stockId" = %s LIMIT 1
+                SELECT id FROM analyses WHERE stock_id = %s LIMIT 1
             """, (stock_id,))
 
             existing = cur.fetchone()
@@ -326,16 +326,16 @@ def save_analysis_to_db(conn, stock_id: str, stock_data: StockData, analysis: Di
                 # 既存データを更新
                 cur.execute("""
                     UPDATE analyses SET
-                        "analysisDate" = %s,
+                        analysis_date = %s,
                         recommendation = %s,
-                        "confidenceScore" = %s,
+                        confidence_score = %s,
                         reason = %s,
-                        "currentPrice" = %s,
-                        "peRatio" = %s,
-                        "pbRatio" = %s,
+                        current_price = %s,
+                        pe_ratio = %s,
+                        pb_ratio = %s,
                         roe = %s,
-                        "dividendYield" = %s,
-                        "updatedAt" = %s
+                        dividend_yield = %s,
+                        updated_at = %s
                     WHERE id = %s
                 """, (
                     now,
@@ -356,18 +356,18 @@ def save_analysis_to_db(conn, stock_id: str, stock_data: StockData, analysis: Di
                 cur.execute("""
                     INSERT INTO analyses (
                         id,
-                        "stockId",
-                        "analysisDate",
+                        stock_id,
+                        analysis_date,
                         recommendation,
-                        "confidenceScore",
+                        confidence_score,
                         reason,
-                        "currentPrice",
-                        "peRatio",
-                        "pbRatio",
+                        current_price,
+                        pe_ratio,
+                        pb_ratio,
                         roe,
-                        "dividendYield",
-                        "createdAt",
-                        "updatedAt"
+                        dividend_yield,
+                        created_at,
+                        updated_at
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     analysis_id,
@@ -415,23 +415,23 @@ def save_price_history_to_db(conn, stock_id: str, stock_data: StockData) -> bool
                 cur.execute("""
                     INSERT INTO price_history (
                         id,
-                        "stockId",
+                        stock_id,
                         date,
                         open,
                         high,
                         low,
                         close,
                         volume,
-                        "createdAt",
-                        "updatedAt"
+                        created_at,
+                        updated_at
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-                    ON CONFLICT ("stockId", date) DO UPDATE SET
+                    ON CONFLICT (stock_id, date) DO UPDATE SET
                         open = EXCLUDED.open,
                         high = EXCLUDED.high,
                         low = EXCLUDED.low,
                         close = EXCLUDED.close,
                         volume = EXCLUDED.volume,
-                        "updatedAt" = NOW()
+                        updated_at = NOW()
                 """, (
                     price_id,
                     stock_id,
@@ -478,8 +478,8 @@ def process_single_stock(stock: Dict[str, Any], force: bool = False) -> bool:
                 # analysisDateはUTC保存なので、日本時間に変換して日付比較
                 cur.execute("""
                     SELECT id FROM analyses
-                    WHERE "stockId" = %s
-                    AND DATE("analysisDate" AT TIME ZONE 'Asia/Tokyo') = %s
+                    WHERE stock_id = %s
+                    AND DATE(analysis_date AT TIME ZONE 'Asia/Tokyo') = %s
                 """, (stock['id'], today))
                 existing_today = cur.fetchone()
 
@@ -552,14 +552,14 @@ def log_batch_job(conn, start_time: datetime, total_stocks: int, success_count: 
             cur.execute("""
                 INSERT INTO batch_job_logs (
                     id,
-                    "jobDate",
+                    job_date,
                     status,
-                    "totalStocks",
-                    "successCount",
-                    "failureCount",
-                    "errorMessage",
+                    total_stocks,
+                    success_count,
+                    failure_count,
+                    error_message,
                     duration,
-                    "createdAt"
+                    created_at
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 log_id,
