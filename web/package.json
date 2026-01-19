@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",
-    "build": "npx prisma generate --schema=../prisma/schema.prisma && next build && npx @opennextjs/cloudflare",
+    "build": "npx prisma generate --schema=../prisma/schema.prisma && next build",
+    "build:cloudflare": "npm run build && npx opennextjs-cloudflare build",
     "start": "next start",
     "lint": "next lint",
-    "deploy": "wrangler pages deploy"
+    "deploy": "npx opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "@prisma/client": "^6.2.0",
