@@ -69,10 +69,10 @@ export default function StocksPage() {
         {/* ヘッダー */}
         <div>
           <h1 className="text-3xl font-bold text-surface-900">
-            📊 銘柄一覧
+            🔍 銘柄を探す
           </h1>
           <p className="text-surface-500 mt-1">
-            プライム市場の全銘柄を表示しています
+            気になる銘柄を検索して、AI分析をリクエストできます
           </p>
         </div>
 

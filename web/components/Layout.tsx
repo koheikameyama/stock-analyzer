@@ -59,7 +59,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         : 'hover:bg-surface-100 text-surface-700 hover:text-surface-900'
                                 }`}
                             >
-                                <span>銘柄一覧</span>
+                                <span>銘柄を探す</span>
                             </Link>
                             <Link
                                 href="/settings"
