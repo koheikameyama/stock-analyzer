@@ -5,11 +5,18 @@
 
 import OpenAI from 'openai';
 
-// OpenAI クライアントの初期化
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  timeout: 30000, // 30秒タイムアウト
-});
+// OpenAI クライアントの遅延初期化（ビルド時のエラーを回避）
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      timeout: 30000, // 30秒タイムアウト
+    });
+  }
+  return openaiClient;
+}
 
 /**
  * AI分析結果の型定義
@@ -86,7 +93,7 @@ ${priceHistoryText}
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         // OpenAI API呼び出し
-        const response = await openai.chat.completions.create({
+        const response = await getOpenAIClient().chat.completions.create({
           model: 'gpt-4o-mini',
           messages: [
             {
