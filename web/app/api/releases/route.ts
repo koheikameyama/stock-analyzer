@@ -13,7 +13,7 @@ export async function GET() {
           'User-Agent': 'stock-analyzer',
         },
         next: {
-          revalidate: 3600, // 1時間キャッシュ
+          revalidate: 300, // 5分キャッシュ
         },
       }
     );
