@@ -337,16 +337,6 @@ export const AnalysisDetailModal: React.FC<AnalysisDetailModalProps> = ({
             </div>
           )}
         </div>
-
-        {/* Footer */}
-        <div className="bg-surface-50 border-t border-surface-100 px-6 py-4 flex justify-end sticky bottom-0">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 bg-white border border-surface-300 hover:bg-surface-50 text-surface-700 font-medium rounded-lg transition-colors shadow-sm"
-          >
-            閉じる
-          </button>
-        </div>
       </div>
     </div>
   );
