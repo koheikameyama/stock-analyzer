@@ -53,6 +53,7 @@ stock-analyzer/
 - Node.js 22.11.0
 - Python 3.11.6
 - PostgreSQL 16
+- Supabase CLI（本番環境でSupabaseを使用する場合）
 
 ### 1. リポジトリのクローン
 
@@ -61,7 +62,19 @@ git clone <repository-url>
 cd stock-analyzer
 ```
 
-### 2. 依存関係のインストール
+### 2. Supabase CLIのインストール（オプション）
+
+本番環境でSupabaseを使用する場合：
+
+```bash
+# Homebrewでインストール
+brew install supabase/tap/supabase
+
+# ログイン（アクセストークンが必要）
+supabase login
+```
+
+### 3. 依存関係のインストール
 
 ```bash
 # すべてインストール
@@ -72,7 +85,7 @@ npm run web:install      # Web依存関係
 npm run batch:install    # Python依存関係
 ```
 
-### 3. 環境変数の設定
+### 4. 環境変数の設定
 
 ```bash
 cp .env.example .env
@@ -85,7 +98,7 @@ DATABASE_URL="postgresql://user:password@localhost:5432/stock_analyzer_dev"
 OPENAI_API_KEY="sk-proj-..."
 ```
 
-### 4. データベースのセットアップ
+### 5. データベースのセットアップ
 
 ```bash
 # スキーマを適用
@@ -95,7 +108,7 @@ npm run db:push
 npm run db:seed
 ```
 
-### 5. 開発サーバーの起動
+### 6. 開発サーバーの起動
 
 ```bash
 # Webアプリケーション
@@ -132,6 +145,15 @@ npm run db:generate  # Prismaクライアント生成
 npm run db:push      # スキーマ適用
 npm run db:studio    # Prisma Studio起動
 npm run db:seed      # シードデータ投入
+```
+
+### Supabase CLI（本番環境）
+
+```bash
+supabase login                           # ログイン
+supabase link --project-ref <project-id> # プロジェクトにリンク
+supabase db push                         # スキーマをリモートにプッシュ
+supabase db diff                         # スキーマの差分確認
 ```
 
 ### バッチ処理
@@ -198,6 +220,7 @@ python3 batch_analysis.py
 
 - [デプロイ手順](./DEPLOYMENT.md)
 - [バッチ処理詳細](./batch/README.md)
+- [プッシュ通知機能のセットアップ](./docs/push_notification_setup.md)
 - [ブランチ運用戦略](./docs/branch_strategy.md)
 - [機能リリース時のX投稿テンプレート](./docs/feature_release_posts.md)
 
