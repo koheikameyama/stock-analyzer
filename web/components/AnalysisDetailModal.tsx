@@ -185,27 +185,27 @@ export const AnalysisDetailModal: React.FC<AnalysisDetailModalProps> = ({
               <div className="grid md:grid-cols-2 gap-6">
                 {/* Stock Info */}
                 <div className="bg-surface-50 rounded-xl p-5 border border-surface-100">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <div className="text-sm font-medium text-surface-500 mb-1">
+                  <div className="mb-4">
+                    <div className="flex justify-between items-start gap-3 mb-3">
+                      <div className="text-sm font-medium text-surface-500">
                         {analysis ? (analysis.stock.market === 'JP' ? '日本市場' : '米国市場') : '日本市場'} • {analysis?.stock.sector || stockData?.sector || '不明'}
                       </div>
-                      <h3 className="text-2xl font-bold text-surface-900 tracking-tight">
-                        {analysis?.stock.name || stockData?.name || '不明'}
-                      </h3>
-                      <div className="font-mono text-surface-500">
-                        {analysis?.stock.ticker || stockData?.ticker || '不明'}
-                      </div>
+                      {analysis ? (
+                        <div className={`px-3 py-1 rounded-full text-sm font-bold border whitespace-nowrap flex-shrink-0 ${getRecommendationColor(analysis.recommendation)}`}>
+                          {analysis.recommendation === 'Buy' ? '買い' : analysis.recommendation === 'Sell' ? '売り' : '様子見'}
+                        </div>
+                      ) : (
+                        <div className="px-3 py-1 rounded-full text-sm font-bold border bg-surface-100 text-surface-600 border-surface-300 whitespace-nowrap flex-shrink-0">
+                          AI分析なし
+                        </div>
+                      )}
                     </div>
-                    {analysis ? (
-                      <div className={`px-3 py-1 rounded-full text-sm font-bold border ${getRecommendationColor(analysis.recommendation)}`}>
-                        {analysis.recommendation === 'Buy' ? '買い' : analysis.recommendation === 'Sell' ? '売り' : '様子見'}
-                      </div>
-                    ) : (
-                      <div className="px-3 py-1 rounded-full text-sm font-bold border bg-surface-100 text-surface-600 border-surface-300">
-                        AI分析なし
-                      </div>
-                    )}
+                    <h3 className="text-2xl font-bold text-surface-900 tracking-tight break-words">
+                      {analysis?.stock.name || stockData?.name || '不明'}
+                    </h3>
+                    <div className="font-mono text-surface-500">
+                      {analysis?.stock.ticker || stockData?.ticker || '不明'}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mt-4">
