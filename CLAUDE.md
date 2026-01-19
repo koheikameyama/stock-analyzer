@@ -112,6 +112,79 @@ gh project item-add 2 --owner koheikameyama --url https://github.com/koheikameya
 
 **重要: issueを作成したら、必ずプロジェクトへの追加も実行してください。**
 
+## N+1問題の防止
+
+**データベースクエリでN+1問題を発生させないでください。**
+
+N+1問題は、データベースクエリが必要以上に多く実行される問題で、サーバーレス環境では接続プール枯渇やタイムアウトの原因になります。
+
+### ✅ DO（推奨）
+
+1. **`include`でリレーションを取得**
+   ```typescript
+   // ✅ 1クエリで全て取得
+   const analyses = await prisma.analysis.findMany({
+     include: { stock: true }
+   });
+   ```
+
+2. **一括操作には`deleteMany`/`updateMany`を使う**
+   ```typescript
+   // ✅ 1クエリで一括削除
+   await prisma.record.deleteMany({
+     where: { id: { in: ids } }
+   });
+   ```
+
+3. **全データ取得後、メモリ上でフィルタリング**
+   ```typescript
+   // ✅ 1クエリで全取得 → メモリ上で最新のみ抽出
+   const allAnalyses = await prisma.analysis.findMany({
+     include: { stock: true },
+     orderBy: { analysisDate: 'desc' }
+   });
+
+   const latestByStock = new Map();
+   for (const analysis of allAnalyses) {
+     if (!latestByStock.has(analysis.stockId)) {
+       latestByStock.set(analysis.stockId, analysis);
+     }
+   }
+   ```
+
+### ❌ DON'T（避ける）
+
+1. **ループ内でデータベースクエリを実行しない**
+   ```typescript
+   // ❌ 悪い例（Nクエリ発生）
+   for (const stock of stocks) {
+     const analysis = await prisma.analysis.findFirst({
+       where: { stockId: stock.id }
+     });
+   }
+   ```
+
+2. **ループ内で個別削除/更新しない**
+   ```typescript
+   // ❌ 悪い例（Nクエリ発生）
+   for (const id of ids) {
+     await prisma.record.delete({ where: { id } });
+   }
+   ```
+
+### 実装時のチェックリスト
+
+- [ ] ループ内で`await prisma.*`を呼んでいないか？
+- [ ] `include`でリレーションを効率的に取得しているか？
+- [ ] 複数レコードの更新/削除に`*Many`を使っているか？
+
+### 過去の問題例
+
+- `/api/analyses/latest`: 16クエリ → タイムアウト → 1クエリに最適化
+- `/api/push-notifications/send`: ループ内delete → deleteMany に変更
+
+詳細は [N+1問題防止ガイド](./docs/n-plus-1-prevention.md) を参照してください。
+
 ## 例外
 
 - コード自体（変数名、関数名、クラス名など）は英語で記述する

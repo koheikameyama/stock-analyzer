@@ -204,11 +204,15 @@ export class AnalysisService {
    * 最新の分析結果を取得（各銘柄につき最新1件のみ・日本株のみ）
    * @param recommendation 推奨フィルター（Buy/Sell/Hold、オプション）
    * @returns 分析結果の配列
+   *
+   * 【N+1問題対策】
+   * - 銘柄ごとにfindFirstを実行するとN+1問題が発生（16クエリ → タイムアウト）
+   * - 1つのfindManyで全データ取得後、メモリ上でフィルタリング（1クエリ）
    */
   static async getLatestAnalyses(
     recommendation?: 'Buy' | 'Sell' | 'Hold'
   ) {
-    // 最適化: 1つのクエリで全ての分析結果を取得
+    // 最適化: 1つのクエリで全ての分析結果を取得（N+1問題を回避）
     const allAnalyses = await prisma.analysis.findMany({
       where: {
         stock: { market: 'JP' },
