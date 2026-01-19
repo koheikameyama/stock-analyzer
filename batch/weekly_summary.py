@@ -25,14 +25,15 @@ SLACK_WEBHOOK_URL = os.getenv('SLACK_WEBHOOK_URL')
 
 def get_latest_analyses(conn) -> List[Dict]:
     """
-    最新の分析結果を取得
+    各銘柄の最新分析結果を取得（N+1問題を防ぐため1クエリで取得）
 
     Returns:
         List[Dict]: 分析結果のリスト
     """
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        # DISTINCT ON を使用して各銘柄の最新分析のみを取得
         cur.execute("""
-            SELECT
+            SELECT DISTINCT ON (s.id)
                 s.ticker,
                 s.name,
                 a.recommendation,
@@ -41,8 +42,8 @@ def get_latest_analyses(conn) -> List[Dict]:
                 a.analysis_date
             FROM analyses a
             JOIN stocks s ON a.stock_id = s.id
-            WHERE a.analysis_date >= NOW() - INTERVAL '7 days'
-            ORDER BY a.confidence_score DESC
+            WHERE s.market = 'JP'
+            ORDER BY s.id, a.analysis_date DESC
         """)
         return cur.fetchall()
 
@@ -63,7 +64,7 @@ def generate_tweet_template(analyses: List[Dict]) -> str:
     sell_list = [a for a in analyses if a['recommendation'] == 'Sell']
 
     # 信頼度順にソート（上位3つまで）
-    buy_top3 = sorted(buy_list, key=lambda x: x['confidenceScore'], reverse=True)[:3]
+    buy_top3 = sorted(buy_list, key=lambda x: x['confidence_score'], reverse=True)[:3]
 
     # 日付範囲を計算
     today = datetime.now()
@@ -77,7 +78,7 @@ def generate_tweet_template(analyses: List[Dict]) -> str:
 
     if buy_top3:
         for stock in buy_top3:
-            template += f"\n✅ {stock['name']}（信頼度{stock['confidenceScore']}%）"
+            template += f"\n✅ {stock['name']}（信頼度{stock['confidence_score']}%）"
     else:
         template += "\n（なし）"
 

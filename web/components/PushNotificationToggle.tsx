@@ -17,13 +17,21 @@ export default function PushNotificationToggle() {
       if ('serviceWorker' in navigator && 'PushManager' in window) {
         setIsSupported(true);
 
-        // 既存の購読状態を確認
+        // Service Workerを登録（push通知対応版）
         try {
-          const registration = await navigator.serviceWorker.ready;
+          const registration = await navigator.serviceWorker.register('/custom-sw.js', {
+            scope: '/'
+          });
+          console.log('Custom Service Worker registered:', registration);
+
+          // Service Workerが準備完了するまで待つ
+          await navigator.serviceWorker.ready;
+
+          // 既存の購読状態を確認
           const subscription = await registration.pushManager.getSubscription();
           setIsSubscribed(subscription !== null);
         } catch (error) {
-          console.error('購読状態の確認に失敗しました:', error);
+          console.error('Service Worker登録または購読状態の確認に失敗しました:', error);
         }
       }
     };
@@ -150,31 +158,25 @@ export default function PushNotificationToggle() {
   }
 
   return (
-    <div className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg bg-white">
-      <div className="flex-1">
-        <h3 className="text-sm font-medium text-gray-900">
-          日次更新通知
-        </h3>
-        <p className="text-xs text-gray-500 mt-1">
-          {isSubscribed
-            ? '毎日の分析完了時にプッシュ通知を受け取ります'
-            : '分析完了時にプッシュ通知を受け取る'}
-        </p>
+    <div className="flex items-center justify-between gap-3 text-sm text-gray-600">
+      <div className="flex items-center gap-2">
+        <span className="text-gray-500">🔔</span>
+        <span>日次更新通知</span>
       </div>
       <button
         onClick={isSubscribed ? unsubscribe : subscribe}
         disabled={isLoading}
         className={`
-          px-4 py-2 text-sm font-medium rounded-lg transition-colors
+          px-3 py-1.5 text-xs font-medium rounded-md transition-colors
           ${
             isSubscribed
-              ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
+              ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
           }
           disabled:opacity-50 disabled:cursor-not-allowed
         `}
       >
-        {isLoading ? '処理中...' : isSubscribed ? '無効にする' : '有効にする'}
+        {isLoading ? '処理中...' : isSubscribed ? 'ON' : 'OFF'}
       </button>
     </div>
   );

@@ -9,6 +9,7 @@ import { Providers } from './providers';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { Analytics } from '@/components/Analytics';
 import { ReleaseNoteModal } from '@/components/ReleaseNoteModal';
+import { PushNotificationPromptModal } from '@/components/PushNotificationPromptModal';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -85,6 +86,7 @@ export default function RootLayout({
         <Providers>{children}</Providers>
         <InstallPrompt />
         <ReleaseNoteModal />
+        <PushNotificationPromptModal />
       </body>
     </html>
   );

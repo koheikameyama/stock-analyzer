@@ -20,11 +20,26 @@ const nextConfig: NextConfig = {
 // PWA設定
 const pwaConfig = withPWA({
   dest: 'public',
-  register: true,
+  register: false, // 手動で登録するため無効化
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development', // 開発環境では無効化
-  sw: 'sw.js', // カスタムService Workerを使用
+  sw: 'sw.js',
   scope: '/',
+  // 存在しないファイルをプリキャッシュしないように設定
+  buildExcludes: [/app-build-manifest\.json$/],
+  // ランタイムキャッシング戦略を設定
+  runtimeCaching: [
+    {
+      urlPattern: /^https?.*/,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'offlineCache',
+        expiration: {
+          maxEntries: 200,
+        },
+      },
+    },
+  ],
 })(nextConfig);
 
 export default pwaConfig;
