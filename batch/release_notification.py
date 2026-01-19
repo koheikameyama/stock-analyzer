@@ -52,8 +52,19 @@ def generate_x_post(title: str, body: str) -> str:
                 if feature:
                     features.append(feature)
 
+    # 各項目を簡潔に変換
+    def shorten_feature(feature: str) -> str:
+        """項目を簡潔に変換"""
+        # "新機能:" や "改善:" の部分を削除
+        feature = feature.replace('新機能:', '').replace('改善:', '').replace('修正:', '')
+        # "〜を" や "〜が" などの助詞を削除してさらに簡潔に
+        feature = feature.replace('を受け取れるようになりました', '')
+        feature = feature.replace('できるようになりました', '')
+        feature = feature.replace('しました', '')
+        return feature.strip()
+
     # X投稿テキスト生成（140文字以内）
-    base_text = f"🎉 {title}リリース\n\n"
+    base_text = f"🎉 {title}\n\n"
     url = "\n\nhttps://stock-analyzer.jp/\n\n#AI株式分析 #投資ツール"
 
     # 残り文字数を計算
@@ -62,9 +73,18 @@ def generate_x_post(title: str, body: str) -> str:
     # 新機能を追加（文字数制限内で）
     feature_text = ""
     for feature in features[:3]:  # 最大3つまで
-        line = f"{feature}\n"
-        if len(feature_text) + len(line) <= remaining:
-            feature_text += line
+        # まず簡潔版を試す
+        shortened = shorten_feature(feature)
+        # 絵文字部分を保持
+        emoji = feature.split()[0] if feature.split() else ""
+        short_line = f"{emoji} {shortened}\n" if emoji else f"{shortened}\n"
+
+        # 簡潔版で入るかチェック
+        if len(feature_text) + len(short_line) <= remaining:
+            feature_text += short_line
+        # 元のままでも入るかチェック
+        elif len(feature_text) + len(f"{feature}\n") <= remaining:
+            feature_text += f"{feature}\n"
         else:
             break
 
