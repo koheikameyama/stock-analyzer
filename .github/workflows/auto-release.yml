@@ -12,6 +12,9 @@ jobs:
     if: github.event.pull_request.merged == true && (contains(github.event.pull_request.labels.*.name, 'version:major') || contains(github.event.pull_request.labels.*.name, 'version:minor') || contains(github.event.pull_request.labels.*.name, 'version:patch'))
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write  # リリース作成とタグ作成に必要
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
