@@ -112,8 +112,10 @@ export const PushNotificationPromptModal: React.FC = () => {
 
       localStorage.setItem('pushNotificationPromptClosed', 'true');
       setIsOpen(false);
+      alert('プッシュ通知を有効にしました！');
     } catch (error) {
       console.error('プッシュ通知の有効化エラー:', error);
+      alert(`エラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
       setIsOpen(false);
     } finally {
       setIsLoading(false);
