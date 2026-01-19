@@ -6,6 +6,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { AboutModal } from './AboutModal';
 import { ShareButtons } from './ShareButtons';
 
@@ -15,6 +16,7 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
+    const pathname = usePathname();
     return (
         <div className="min-h-screen bg-gradient-to-br from-surface-50 via-blue-50/30 to-indigo-50/30 flex flex-col">
             {/* ヘッダー */}
@@ -41,19 +43,31 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <nav className="flex items-center gap-2 sm:gap-4">
                             <Link
                                 href="/"
-                                className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-surface-100 text-surface-700 hover:text-surface-900 rounded-lg text-sm font-medium transition-colors"
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                    pathname === '/'
+                                        ? 'bg-primary-600 text-white'
+                                        : 'hover:bg-surface-100 text-surface-700 hover:text-surface-900'
+                                }`}
                             >
                                 <span>AI分析</span>
                             </Link>
                             <Link
                                 href="/stocks"
-                                className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-surface-100 text-surface-700 hover:text-surface-900 rounded-lg text-sm font-medium transition-colors"
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                    pathname === '/stocks'
+                                        ? 'bg-primary-600 text-white'
+                                        : 'hover:bg-surface-100 text-surface-700 hover:text-surface-900'
+                                }`}
                             >
                                 <span>銘柄一覧</span>
                             </Link>
                             <Link
                                 href="/settings"
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-100 hover:bg-surface-200 text-surface-700 hover:text-surface-900 rounded-lg text-sm font-medium transition-colors border border-surface-200"
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-surface-200 ${
+                                    pathname === '/settings'
+                                        ? 'bg-primary-600 text-white border-primary-600'
+                                        : 'bg-surface-100 hover:bg-surface-200 text-surface-700 hover:text-surface-900'
+                                }`}
                                 aria-label="設定"
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
