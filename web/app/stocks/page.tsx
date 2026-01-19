@@ -15,7 +15,7 @@ export default function StocksPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [sector, setSector] = useState('');
-  const [hasAnalysis, setHasAnalysis] = useState(false);
+  const [hasAnalysis, setHasAnalysis] = useState(false); // デフォルトは全銘柄表示
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(
     null
   );
@@ -27,7 +27,7 @@ export default function StocksPage() {
     limit: 50,
     search,
     sector,
-    hasAnalysis: hasAnalysis ? true : undefined,
+    hasAnalysis: hasAnalysis ? false : undefined, // trueの場合は分析なし（false）を渡す
   });
 
   // 業種リスト取得
@@ -133,7 +133,7 @@ export default function StocksPage() {
                 </select>
               </div>
 
-              {/* AI分析ありチェックボックス */}
+              {/* AI分析なしチェックボックス */}
               <div className="flex items-center gap-2">
                 <input
                   id="hasAnalysis"
@@ -149,7 +149,7 @@ export default function StocksPage() {
                   htmlFor="hasAnalysis"
                   className="text-sm font-medium text-surface-700 cursor-pointer"
                 >
-                  🤖 AI分析ありのみ表示
+                  📊 AI分析なしのみ表示
                 </label>
               </div>
             </div>
