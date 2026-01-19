@@ -204,25 +204,43 @@ export const StockChart: React.FC<StockChartProps> = ({ data, ticker }) => {
   // 出来高の最大値
   const maxVolume = useMemo(() => Math.max(...chartData.map(d => d.volume)), [chartData]);
 
+  // 各期間のデータが十分にあるかチェック
+  const availablePeriods = useMemo(() => {
+    const dataLength = data.length;
+    return {
+      '1W': dataLength >= 7,
+      '1M': dataLength >= 30,
+      '3M': dataLength >= 90,
+      '6M': dataLength >= 180,
+      '1Y': dataLength >= 365,
+    };
+  }, [data]);
+
   return (
     <div className="space-y-4">
       {/* コントロール */}
       <div className="space-y-3">
         {/* 期間選択 */}
         <div className="flex gap-2 flex-wrap">
-          {(['1W', '1M', '3M', '6M', '1Y'] as Period[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
-                period === p
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-surface-100 text-surface-700 hover:bg-surface-200'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
+          {(['1W', '1M', '3M', '6M', '1Y'] as Period[]).map((p) => {
+            const isAvailable = availablePeriods[p];
+            return (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                disabled={!isAvailable}
+                className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
+                  period === p
+                    ? 'bg-primary-500 text-white'
+                    : isAvailable
+                    ? 'bg-surface-100 text-surface-700 hover:bg-surface-200'
+                    : 'bg-surface-50 text-surface-400 cursor-not-allowed opacity-50'
+                }`}
+              >
+                {p}
+              </button>
+            );
+          })}
         </div>
 
         {/* 移動平均線の表示/非表示 */}
