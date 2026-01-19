@@ -10,7 +10,7 @@ import { StockListTable } from '@/components/StockListTable';
 import { StockCard } from '@/components/StockCard';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { AnalysisDetailModal } from '@/components/AnalysisDetailModal';
-import { useStocks } from '@/hooks/useStocks';
+import { useStocks, useSectors } from '@/hooks/useStocks';
 
 type ViewMode = 'card' | 'table';
 
@@ -21,7 +21,6 @@ export default function StocksPage() {
   const [hasAnalysis, setHasAnalysis] = useState<boolean | undefined>(
     undefined
   );
-  const [isAiTarget, setIsAiTarget] = useState(false); // デフォルトで全銘柄を表示
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(
     null
@@ -35,8 +34,10 @@ export default function StocksPage() {
     search,
     sector,
     hasAnalysis,
-    isAiTarget: isAiTarget ? true : undefined,
   });
+
+  // 業種リスト取得
+  const { sectors } = useSectors();
 
   const stocks = data?.stocks || [];
   const pagination = data?.pagination;
@@ -159,38 +160,23 @@ export default function StocksPage() {
                   >
                     業種
                   </label>
-                  <input
+                  <select
                     id="sector"
-                    type="text"
                     value={sector}
                     onChange={(e) => {
                       setSector(e.target.value);
                       setPage(1);
                     }}
-                    placeholder="例: 水産・農林業"
                     className="w-full px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  />
+                  >
+                    <option value="">すべて</option>
+                    {sectors.sectors?.map((s: string) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </div>
-
-              {/* AI分析対象のみチェックボックス */}
-              <div className="flex items-center gap-2">
-                <input
-                  id="isAiTarget"
-                  type="checkbox"
-                  checked={isAiTarget}
-                  onChange={(e) => {
-                    setIsAiTarget(e.target.checked);
-                    setPage(1);
-                  }}
-                  className="w-4 h-4 text-primary-600 border-surface-300 rounded focus:ring-2 focus:ring-primary-500"
-                />
-                <label
-                  htmlFor="isAiTarget"
-                  className="text-sm font-medium text-surface-700 cursor-pointer"
-                >
-                  🤖 AI分析対象の銘柄のみ表示 <span className="text-surface-500">(15銘柄)</span>
-                </label>
               </div>
             </div>
           </form>
