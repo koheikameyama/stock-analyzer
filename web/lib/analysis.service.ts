@@ -202,46 +202,43 @@ export class AnalysisService {
 
   /**
    * 最新の分析結果を取得（各銘柄につき最新1件のみ・日本株のみ）
+   * N+1問題を回避するため、全データを一度に取得してメモリ上で処理
    * @param recommendation 推奨フィルター（Buy/Sell/Hold、オプション）
    * @returns 分析結果の配列
    */
   static async getLatestAnalyses(
     recommendation?: 'Buy' | 'Sell' | 'Hold'
   ) {
-    // 1. 対象銘柄を取得（日本株のみ）
-    const stocks = await prisma.stock.findMany({
-      where: { market: 'JP' },
-      select: { id: true, ticker: true, name: true, market: true, sector: true },
+    // 1. 全分析データを一度に取得（recommendationフィルタ適用）
+    const allAnalyses = await prisma.analysis.findMany({
+      where: {
+        stock: { market: 'JP' },
+        ...(recommendation && { recommendation }),
+      },
+      include: {
+        stock: {
+          select: {
+            ticker: true,
+            name: true,
+            market: true,
+            sector: true,
+          },
+        },
+      },
+      orderBy: { analysisDate: 'desc' },
     });
 
-    // 2. 各銘柄の最新分析を取得
-    const latestAnalyses = await Promise.all(
-      stocks.map(async (stock: any) => {
-        const analysis = await prisma.analysis.findFirst({
-          where: {
-            stockId: stock.id,
-            ...(recommendation && { recommendation }),
-          },
-          orderBy: { analysisDate: 'desc' },
-        });
+    // 2. メモリ上で各銘柄の最新分析のみを抽出
+    const latestByStock = new Map();
+    for (const analysis of allAnalyses) {
+      const stockId = analysis.stockId;
+      if (!latestByStock.has(stockId)) {
+        latestByStock.set(stockId, analysis);
+      }
+    }
 
-        if (!analysis) return null;
-
-        return {
-          ...analysis,
-          stock: {
-            ticker: stock.ticker,
-            name: stock.name,
-            market: stock.market,
-            sector: stock.sector,
-          },
-        };
-      })
-    );
-
-    // 3. nullを除外してconfidenceScoreでソート
-    return latestAnalyses
-      .filter((a): a is NonNullable<typeof a> => a !== null)
+    // 3. confidenceScoreでソート
+    return Array.from(latestByStock.values())
       .sort((a, b) => b.confidenceScore - a.confidenceScore);
   }
 
