@@ -76,16 +76,16 @@ export const AnalysisTable: React.FC<AnalysisTableProps> = ({
   });
 
   const sortOptions: { label: string; value: SortField }[] = [
-    { label: 'Score', value: 'confidenceScore' },
-    { label: 'Price', value: 'currentPrice' },
-    { label: 'Ticker', value: 'ticker' },
+    { label: 'スコア', value: 'confidenceScore' },
+    { label: '価格', value: 'currentPrice' },
+    { label: '銘柄コード', value: 'ticker' },
   ];
 
   return (
     <div className="space-y-6">
       {/* Sort Bar */}
       <div className="flex items-center justify-end gap-3 text-sm">
-        <span className="text-surface-500 font-medium">Sort by:</span>
+        <span className="text-surface-500 font-medium">並び替え:</span>
         <div className="flex bg-white rounded-lg border border-surface-200 p-1">
           {sortOptions.map((option) => (
             <button
