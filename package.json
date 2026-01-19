@@ -15,11 +15,7 @@
     "batch": "cd batch && python3 batch_analysis.py",
     "batch:install": "cd batch && pip3 install -r requirements.txt",
     "web:install": "cd web && npm install",
-    "install:all": "npm run web:install && npm run batch:install",
-    "vercel:deploy": "vercel",
-    "vercel:deploy:prod": "vercel --prod",
-    "vercel:dev": "vercel dev",
-    "vercel:env": "vercel env pull .env.local"
+    "install:all": "npm run web:install && npm run batch:install"
   },
   "workspaces": [
     "web"
