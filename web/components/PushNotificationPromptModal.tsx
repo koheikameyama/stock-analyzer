@@ -62,6 +62,18 @@ export const PushNotificationPromptModal: React.FC = () => {
   };
 
   /**
+   * タイムアウト付きPromise
+   */
+  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+      )
+    ]);
+  };
+
+  /**
    * プッシュ通知を有効にする
    */
   const handleEnable = async () => {
@@ -69,12 +81,19 @@ export const PushNotificationPromptModal: React.FC = () => {
 
     try {
       console.log('[Push] 1. Service Worker登録開始');
-      // Service Workerを登録
-      const registration = await navigator.serviceWorker.register('/custom-sw.js', {
-        scope: '/'
-      });
+      // Service Workerを登録（10秒タイムアウト）
+      const registration = await withTimeout(
+        navigator.serviceWorker.register('/custom-sw.js', { scope: '/' }),
+        10000,
+        'Service Workerの登録がタイムアウトしました'
+      );
       console.log('[Push] 2. Service Worker登録完了', registration);
-      await navigator.serviceWorker.ready;
+
+      await withTimeout(
+        navigator.serviceWorker.ready,
+        10000,
+        'Service Workerの準備がタイムアウトしました'
+      );
       console.log('[Push] 3. Service Worker準備完了');
 
       // 通知の許可をリクエスト
@@ -95,22 +114,30 @@ export const PushNotificationPromptModal: React.FC = () => {
       }
 
       console.log('[Push] 6. プッシュ購読開始');
-      // プッシュ通知を購読
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-      });
+      // プッシュ通知を購読（30秒タイムアウト）
+      const subscription = await withTimeout(
+        registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        }),
+        30000,
+        'プッシュ通知の購読がタイムアウトしました'
+      );
       console.log('[Push] 7. プッシュ購読完了', subscription);
 
       console.log('[Push] 8. サーバーへ送信開始');
-      // サーバーに購読情報を送信
-      const response = await fetch('/api/push-notifications/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(subscription.toJSON()),
-      });
+      // サーバーに購読情報を送信（10秒タイムアウト）
+      const response = await withTimeout(
+        fetch('/api/push-notifications/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(subscription.toJSON()),
+        }),
+        10000,
+        'サーバーへの送信がタイムアウトしました'
+      );
       console.log('[Push] 9. サーバーレスポンス:', response.status);
 
       if (!response.ok) {
