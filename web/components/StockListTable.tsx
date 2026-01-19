@@ -182,7 +182,7 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
                 onClick={() => handleSort('requestCount')}
               >
                 <div className="flex items-center gap-1">
-                  アクション
+                  リクエスト
                   {sortBy === 'requestCount' ? (
                     <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
                   ) : (
@@ -239,41 +239,40 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
                     </span>
                   )}
                 </td>
-                <td className="px-2 sm:px-6 py-4 w-24 sm:w-auto">
+                <td
+                  className="px-2 sm:px-6 py-4 w-24 sm:w-auto cursor-pointer hover:bg-surface-100"
+                  onClick={() => onStockClick?.(stock)}
+                >
                   <div className="flex flex-col items-center gap-1">
-                    {/* 詳細を見るボタン */}
-                    {stock.latestAnalysis ? (
-                      <button
-                        onClick={() => onStockClick?.(stock)}
-                        className="text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-medium"
-                      >
-                        詳細
-                      </button>
-                    ) : requestedStocks.has(stock.ticker) ? (
-                      <button
-                        disabled
-                        className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-medium text-surface-400 bg-surface-200 rounded transition-colors cursor-not-allowed"
-                      >
-                        <span className="sm:hidden">済</span>
-                        <span className="hidden sm:inline">リクエスト済</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRequestAnalysis?.(stock);
-                        }}
-                        className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded transition-colors"
-                      >
-                        リクエスト
-                      </button>
-                    )}
-
-                    {/* リクエスト数表示 */}
+                    {/* リクエストボタン（AI分析なしの場合のみ） */}
                     {!stock.latestAnalysis && (
-                      <span className="text-xs text-surface-500 min-w-[3rem] text-center">
-                        {stock.requestCount || 0}人
-                      </span>
+                      <>
+                        {requestedStocks.has(stock.ticker) ? (
+                          <button
+                            disabled
+                            onClick={(e) => e.stopPropagation()}
+                            className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-medium text-surface-400 bg-surface-200 rounded transition-colors cursor-not-allowed"
+                          >
+                            <span className="sm:hidden">済</span>
+                            <span className="hidden sm:inline">リクエスト済</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRequestAnalysis?.(stock);
+                            }}
+                            className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded transition-colors"
+                          >
+                            リクエスト
+                          </button>
+                        )}
+
+                        {/* リクエスト数表示 */}
+                        <span className="text-xs text-surface-500 min-w-[3rem] text-center">
+                          {stock.requestCount || 0}人
+                        </span>
+                      </>
                     )}
                   </div>
                 </td>
