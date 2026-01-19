@@ -78,7 +78,7 @@ export const AnalysisTable: React.FC<AnalysisTableProps> = ({
   const sortOptions: { label: string; value: SortField }[] = [
     { label: 'スコア', value: 'confidenceScore' },
     { label: '価格', value: 'currentPrice' },
-    { label: 'ティッカー', value: 'ticker' },
+    { label: '銘柄コード', value: 'ticker' },
   ];
 
   return (
