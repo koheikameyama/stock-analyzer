@@ -82,9 +82,18 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 購読情報を削除
-    await prisma.pushSubscription.delete({
-      where: { endpoint },
-    });
+    try {
+      await prisma.pushSubscription.delete({
+        where: { endpoint },
+      });
+    } catch (deleteError: any) {
+      // レコードが存在しない場合はエラーを無視（既に削除済み）
+      if (deleteError.code === 'P2025') {
+        console.log('購読情報は既に削除されています:', endpoint);
+      } else {
+        throw deleteError;
+      }
+    }
 
     return NextResponse.json({
       success: true,
