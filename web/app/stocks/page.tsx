@@ -24,6 +24,7 @@ export default function StocksPage() {
   );
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [isRequesting, setIsRequesting] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Toast管理
   const { toasts, showToast, removeToast } = useToast();
@@ -99,6 +100,9 @@ export default function StocksPage() {
 
       // Cookieに保存
       addRequestedStock(stock.ticker);
+
+      // テーブルの状態を更新
+      setRefreshKey(prev => prev + 1);
 
       // 成功通知
       showToast(
@@ -242,6 +246,7 @@ export default function StocksPage() {
 
             {/* テーブル表示 */}
             <StockListTable
+              key={refreshKey}
               stocks={stocks}
               onStockClick={handleStockClick}
               onRequestAnalysis={handleRequestAnalysis}

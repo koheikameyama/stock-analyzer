@@ -4,7 +4,8 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { isStockRequested } from '@/lib/cookies';
 
 interface Stock {
   id: string;
@@ -34,9 +35,21 @@ interface StockListTableProps {
  */
 export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: StockListTableProps) {
   const [sortBy, setSortBy] = useState<
-    'ticker' | 'name' | 'sector' | 'confidence'
+    'ticker' | 'name' | 'sector' | 'confidence' | 'requestCount'
   >('ticker');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [requestedStocks, setRequestedStocks] = useState<Set<string>>(new Set());
+
+  // クライアントサイドでCookieから読み込み
+  useEffect(() => {
+    const requested = new Set<string>();
+    stocks.forEach(stock => {
+      if (isStockRequested(stock.ticker)) {
+        requested.add(stock.ticker);
+      }
+    });
+    setRequestedStocks(requested);
+  }, [stocks]);
 
   // ソート処理
   const sortedStocks = [...stocks].sort((a, b) => {
@@ -57,6 +70,9 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
           (b.latestAnalysis?.confidenceScore || 0) -
           (a.latestAnalysis?.confidenceScore || 0);
         break;
+      case 'requestCount':
+        compareValue = (b.requestCount || 0) - (a.requestCount || 0);
+        break;
     }
 
     return sortOrder === 'asc' ? compareValue : -compareValue;
@@ -64,7 +80,7 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
 
   // ソートハンドラー
   const handleSort = (
-    column: 'ticker' | 'name' | 'sector' | 'confidence'
+    column: 'ticker' | 'name' | 'sector' | 'confidence' | 'requestCount'
   ) => {
     if (sortBy === column) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -107,7 +123,7 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
           <thead className="bg-surface-50">
             <tr>
               <th
-                className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100"
+                className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 w-20 sm:w-auto"
                 onClick={() => handleSort('ticker')}
               >
                 <div className="flex items-center gap-1">
@@ -153,8 +169,16 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
                   )}
                 </div>
               </th>
-              <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider w-24 sm:w-auto">
-                アクション
+              <th
+                className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider w-24 sm:w-auto cursor-pointer hover:bg-surface-100"
+                onClick={() => handleSort('requestCount')}
+              >
+                <div className="flex items-center gap-1">
+                  アクション
+                  {sortBy === 'requestCount' && (
+                    <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
               </th>
             </tr>
           </thead>
@@ -164,7 +188,7 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
                 key={stock.id}
                 className="hover:bg-surface-50 transition-colors"
               >
-                <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-surface-900">
+                <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-surface-900 w-20 sm:w-auto">
                   {stock.ticker}
                 </td>
                 <td className="px-2 sm:px-6 py-4">
@@ -215,6 +239,14 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
                       >
                         詳細
                       </button>
+                    ) : requestedStocks.has(stock.ticker) ? (
+                      <button
+                        disabled
+                        className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-medium text-surface-400 bg-surface-200 rounded transition-colors cursor-not-allowed"
+                      >
+                        <span className="sm:hidden">済</span>
+                        <span className="hidden sm:inline">リクエスト済</span>
+                      </button>
                     ) : (
                       <button
                         onClick={(e) => {
@@ -228,9 +260,9 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
                     )}
 
                     {/* リクエスト数表示 */}
-                    {stock.requestCount && stock.requestCount > 0 && (
-                      <span className="text-xs text-surface-500">
-                        {stock.requestCount}人
+                    {!stock.latestAnalysis && (
+                      <span className="text-xs text-surface-500 min-w-[3rem] text-center">
+                        {stock.requestCount || 0}人
                       </span>
                     )}
                   </div>
