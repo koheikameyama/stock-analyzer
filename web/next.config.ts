@@ -1,5 +1,11 @@
 import type { NextConfig } from 'next';
 import withPWA from 'next-pwa';
+import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
+
+// Cloudflareローカル開発用の初期化
+if (process.env.NODE_ENV === 'development') {
+  initOpenNextCloudflareForDev();
+}
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

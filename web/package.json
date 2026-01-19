@@ -5,8 +5,10 @@
   "scripts": {
     "dev": "next dev --turbo",
     "build": "npx prisma generate --schema=../prisma/schema.prisma && next build",
+    "build:cloudflare": "npm run build && npx opennextjs-cloudflare build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "deploy": "npx opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "@prisma/client": "^6.2.0",
@@ -24,6 +26,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.14.9",
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
@@ -34,6 +37,7 @@
     "prisma": "^6.2.0",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "wrangler": "^4.59.2"
   }
 }
