@@ -128,8 +128,10 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
               >
                 <div className="flex items-center gap-1">
                   コード
-                  {sortBy === 'ticker' && (
+                  {sortBy === 'ticker' ? (
                     <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  ) : (
+                    <span className="text-surface-300">↕</span>
                   )}
                 </div>
               </th>
@@ -139,8 +141,10 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
               >
                 <div className="flex items-center gap-1">
                   銘柄名
-                  {sortBy === 'name' && (
+                  {sortBy === 'name' ? (
                     <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  ) : (
+                    <span className="text-surface-300">↕</span>
                   )}
                 </div>
               </th>
@@ -150,8 +154,10 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
               >
                 <div className="flex items-center gap-1">
                   業種
-                  {sortBy === 'sector' && (
+                  {sortBy === 'sector' ? (
                     <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  ) : (
+                    <span className="text-surface-300">↕</span>
                   )}
                 </div>
               </th>
@@ -164,8 +170,10 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
               >
                 <div className="flex items-center gap-1">
                   最新推奨
-                  {sortBy === 'confidence' && (
+                  {sortBy === 'confidence' ? (
                     <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  ) : (
+                    <span className="text-surface-300">↕</span>
                   )}
                 </div>
               </th>
@@ -175,8 +183,10 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
               >
                 <div className="flex items-center gap-1">
                   アクション
-                  {sortBy === 'requestCount' && (
+                  {sortBy === 'requestCount' ? (
                     <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  ) : (
+                    <span className="text-surface-300">↕</span>
                   )}
                 </div>
               </th>
