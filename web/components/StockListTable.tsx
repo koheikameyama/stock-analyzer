@@ -196,7 +196,8 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
             {sortedStocks.map((stock) => (
               <tr
                 key={stock.id}
-                className="hover:bg-surface-50 transition-colors"
+                className="hover:bg-surface-50 transition-colors cursor-pointer"
+                onClick={() => onStockClick?.(stock)}
               >
                 <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-surface-900 w-20 sm:w-auto">
                   {stock.ticker}
@@ -239,10 +240,7 @@ export function StockListTable({ stocks, onStockClick, onRequestAnalysis }: Stoc
                     </span>
                   )}
                 </td>
-                <td
-                  className="px-2 sm:px-6 py-4 w-24 sm:w-auto cursor-pointer hover:bg-surface-100"
-                  onClick={() => onStockClick?.(stock)}
-                >
+                <td className="px-2 sm:px-6 py-4 w-24 sm:w-auto">
                   <div className="flex flex-col items-center gap-1">
                     {/* リクエストボタン（AI分析なしの場合のみ） */}
                     {!stock.latestAnalysis && (
