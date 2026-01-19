@@ -11,8 +11,13 @@ const globalForPrisma = globalThis as unknown as {
 
 // Vercelサーバーレス環境用の接続プール設定
 const createPrismaClient = () => {
+  // サーバーレス環境に最適化された接続プール設定
+  const url = new URL(process.env.DATABASE_URL || '');
+  url.searchParams.set('connection_limit', '1');
+  url.searchParams.set('pool_timeout', '0');
+
   return new PrismaClient({
-    datasourceUrl: process.env.DATABASE_URL,
+    datasourceUrl: url.toString(),
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
 };
