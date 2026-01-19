@@ -78,9 +78,6 @@ export default function Home() {
             <p className="text-xs text-surface-400 mt-2">
               日経225採用の時価総額上位・主要セクター代表15銘柄を分析
             </p>
-            <p className="text-xs text-surface-400 mt-1">
-              🕐 毎日18:00に自動更新
-            </p>
           </div>
 
           {/* ステータス表示 */}
