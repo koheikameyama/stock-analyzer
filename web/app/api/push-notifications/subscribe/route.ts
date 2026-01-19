@@ -56,8 +56,15 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('購読エラー:', error);
+    const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+    const errorDetails = error instanceof Error ? error.stack : JSON.stringify(error);
+    console.error('エラー詳細:', errorDetails);
+
     return NextResponse.json(
-      { error: '購読の保存に失敗しました' },
+      {
+        error: '購読の保存に失敗しました',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      },
       { status: 500 }
     );
   } finally {
@@ -101,8 +108,15 @@ export async function DELETE(request: NextRequest) {
     });
   } catch (error) {
     console.error('購読解除エラー:', error);
+    const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+    const errorDetails = error instanceof Error ? error.stack : JSON.stringify(error);
+    console.error('エラー詳細:', errorDetails);
+
     return NextResponse.json(
-      { error: '購読解除に失敗しました' },
+      {
+        error: '購読解除に失敗しました',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      },
       { status: 500 }
     );
   } finally {
