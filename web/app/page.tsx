@@ -12,6 +12,7 @@ import { AnalysisDetailModal } from '@/components/AnalysisDetailModal';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { AdBanner } from '@/components/AdBanner';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
+import { AnalysisTargetInfo } from '@/components/AnalysisTargetInfo';
 import { useLatestAnalyses, useBatchJobStatus } from '@/hooks/useAnalyses';
 import type { Recommendation } from '@/types/analysis';
 
@@ -77,9 +78,6 @@ export default function Home() {
               AIが分析した、おすすめの投資アイデアをチェックしましょう
             </p>
             <p className="text-xs text-surface-400 mt-2">
-              日経225採用の時価総額上位・主要セクター代表15銘柄を分析
-            </p>
-            <p className="text-xs text-surface-400 mt-1">
               🕐 毎日18:00に自動更新
             </p>
           </div>
@@ -109,6 +107,9 @@ export default function Home() {
           adFormat="auto"
           className="my-4"
         />
+
+        {/* AI分析対象銘柄の説明 */}
+        <AnalysisTargetInfo />
 
         {/* プッシュ通知トグル */}
         <PushNotificationToggle />
