@@ -11,6 +11,7 @@ import { AnalysisTable } from '@/components/AnalysisTable';
 import { AnalysisDetailModal } from '@/components/AnalysisDetailModal';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { AdBanner } from '@/components/AdBanner';
+import PushNotificationToggle from '@/components/PushNotificationToggle';
 import { useLatestAnalyses, useBatchJobStatus } from '@/hooks/useAnalyses';
 import type { Recommendation } from '@/types/analysis';
 
@@ -108,6 +109,9 @@ export default function Home() {
           adFormat="auto"
           className="my-4"
         />
+
+        {/* プッシュ通知トグル */}
+        <PushNotificationToggle />
 
         {/* Controls */}
         <div className="flex flex-col sm:flex-row gap-4 justify-end items-start sm:items-center bg-white p-4 rounded-xl border border-surface-200 shadow-sm">

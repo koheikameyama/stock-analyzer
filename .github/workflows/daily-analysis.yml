@@ -52,6 +52,14 @@ jobs:
             python batch_analysis.py
           fi
 
+      - name: Send push notification
+        if: success()
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        run: |
+          cd batch
+          python send_daily_notification.py
+
       - name: Upload logs (if failed)
         if: failure()
         uses: actions/upload-artifact@v4
