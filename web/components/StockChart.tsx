@@ -207,9 +207,9 @@ export const StockChart: React.FC<StockChartProps> = ({ data, ticker }) => {
   return (
     <div className="space-y-4">
       {/* コントロール */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="space-y-3">
         {/* 期間選択 */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {(['1W', '1M', '3M', '6M', '1Y'] as Period[]).map((p) => (
             <button
               key={p}
@@ -226,41 +226,43 @@ export const StockChart: React.FC<StockChartProps> = ({ data, ticker }) => {
         </div>
 
         {/* 移動平均線の表示/非表示 */}
-        <div className="flex gap-3 text-sm items-center">
+        <div className="space-y-2">
           <div className="flex items-center gap-1">
             <span className="text-surface-600 text-xs font-medium">移動平均線</span>
             <InfoTooltip content="移動平均線（MA）は一定期間の株価の平均値を線でつないだもので、トレンドを見やすくする指標です。短期MA（5日）が長期MA（25日）を下から上に突き抜けると「ゴールデンクロス」で買いシグナル、逆は「デッドクロス」で売りシグナルとされています。" />
           </div>
-          <label className="flex items-center gap-1.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showMA.ma5}
-              onChange={(e) => setShowMA({ ...showMA, ma5: e.target.checked })}
-              className="w-4 h-4 text-blue-500 rounded"
-            />
-            <span className="text-blue-600 font-medium">MA5</span>
-            <InfoTooltip content="5日移動平均線。短期トレンドを示します。株価の動きに素早く反応し、直近の値動きを把握できます。" />
-          </label>
-          <label className="flex items-center gap-1.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showMA.ma25}
-              onChange={(e) => setShowMA({ ...showMA, ma25: e.target.checked })}
-              className="w-4 h-4 text-orange-500 rounded"
-            />
-            <span className="text-orange-600 font-medium">MA25</span>
-            <InfoTooltip content="25日移動平均線。中期トレンドを示します。約1ヶ月の値動きを平均化し、短期的なノイズを除去します。" />
-          </label>
-          <label className="flex items-center gap-1.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showMA.ma75}
-              onChange={(e) => setShowMA({ ...showMA, ma75: e.target.checked })}
-              className="w-4 h-4 text-purple-500 rounded"
-            />
-            <span className="text-purple-600 font-medium">MA75</span>
-            <InfoTooltip content="75日移動平均線。長期トレンドを示します。約3ヶ月の値動きを平均化し、大きなトレンドの方向性を判断できます。" />
-          </label>
+          <div className="flex flex-wrap gap-3 text-sm">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showMA.ma5}
+                onChange={(e) => setShowMA({ ...showMA, ma5: e.target.checked })}
+                className="w-4 h-4 text-blue-500 rounded"
+              />
+              <span className="text-blue-600 font-medium">MA5</span>
+              <InfoTooltip content="5日移動平均線。短期トレンドを示します。株価の動きに素早く反応し、直近の値動きを把握できます。" />
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showMA.ma25}
+                onChange={(e) => setShowMA({ ...showMA, ma25: e.target.checked })}
+                className="w-4 h-4 text-orange-500 rounded"
+              />
+              <span className="text-orange-600 font-medium">MA25</span>
+              <InfoTooltip content="25日移動平均線。中期トレンドを示します。約1ヶ月の値動きを平均化し、短期的なノイズを除去します。" />
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showMA.ma75}
+                onChange={(e) => setShowMA({ ...showMA, ma75: e.target.checked })}
+                className="w-4 h-4 text-purple-500 rounded"
+              />
+              <span className="text-purple-600 font-medium">MA75</span>
+              <InfoTooltip content="75日移動平均線。長期トレンドを示します。約3ヶ月の値動きを平均化し、大きなトレンドの方向性を判断できます。" />
+            </label>
+          </div>
         </div>
       </div>
 
