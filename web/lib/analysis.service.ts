@@ -103,33 +103,29 @@ export class AnalysisService {
           },
         });
 
-        // PriceHistory保存（既存データは上書き）
-        for (const priceData of priceHistory) {
-          await tx.priceHistory.upsert({
-            where: {
-              stockId_date: {
-                stockId: stock.id,
-                date: priceData.date,
-              },
+        // PriceHistory保存（N+1問題を防ぐため一括処理）
+        // 既存データを削除してから新しいデータを一括挿入
+        await tx.priceHistory.deleteMany({
+          where: {
+            stockId: stock.id,
+            date: {
+              in: priceHistory.map((p) => p.date),
             },
-            update: {
-              open: priceData.open,
-              high: priceData.high,
-              low: priceData.low,
-              close: priceData.close,
-              volume: priceData.volume,
-            },
-            create: {
-              stockId: stock.id,
-              date: priceData.date,
-              open: priceData.open,
-              high: priceData.high,
-              low: priceData.low,
-              close: priceData.close,
-              volume: priceData.volume,
-            },
-          });
-        }
+          },
+        });
+
+        // 一括挿入（1クエリ）
+        await tx.priceHistory.createMany({
+          data: priceHistory.map((priceData) => ({
+            stockId: stock.id,
+            date: priceData.date,
+            open: priceData.open,
+            high: priceData.high,
+            low: priceData.low,
+            close: priceData.close,
+            volume: priceData.volume,
+          })),
+        });
 
         return analysis.id;
       });
@@ -159,6 +155,11 @@ export class AnalysisService {
    * @param tickers ティッカーシンボルの配列
    * @param concurrency 同時実行数（デフォルト: 1）
    * @returns 分析結果の配列
+   *
+   * 【注意】ループ内でanalyzeSingleStockを呼んでいますが、これは意図的です
+   * - 各銘柄ごとにYahoo Finance APIとOpenAI APIを呼ぶ必要がある
+   * - レート制限対策のため、5秒間隔で順次処理
+   * - バッチ処理（夜間実行）のため、パフォーマンスは問題なし
    */
   static async analyzeMultipleStocks(
     tickers: string[],
@@ -170,7 +171,7 @@ export class AnalysisService {
       `📊 日本株${tickers.length}銘柄の分析を開始（同時実行数: ${concurrency}）...`
     );
 
-    // 順次処理（OpenAI APIのレート制限を考慮）
+    // 順次処理（OpenAI APIとYahoo Finance APIのレート制限を考慮）
     for (let i = 0; i < tickers.length; i++) {
       const ticker = tickers[i];
       const result = await this.analyzeSingleStock(ticker);
