@@ -22,27 +22,35 @@ def generate_x_post(title: str, body: str) -> str:
     Returns:
         str: X投稿テキスト
     """
-    # "## Changes"セクション内の箇条書きを抽出
+    # 箇条書きを抽出
     lines = body.split('\n')
     features = []
-    in_changes = False
 
-    for line in lines:
-        stripped = line.strip()
-        # "## Changes"セクションを探す
-        if stripped.startswith('## Changes'):
-            in_changes = True
-            continue
-        # 次のセクション（---や##）が来たら終了
-        elif (stripped.startswith('---') or stripped.startswith('##')) and in_changes:
-            break
-        # 箇条書き行を抽出
-        elif in_changes and stripped.startswith('-'):
-            # "- " を除去して取得
-            feature = stripped.lstrip('-').strip()
-            # 空行や不要な内容をスキップ
-            if feature and not feature.startswith('**Full') and not feature.startswith('**Author'):
-                features.append(feature)
+    # "## Changes"セクションがあるかチェック
+    has_changes_section = any('## Changes' in line for line in lines)
+
+    if has_changes_section:
+        # "## Changes"セクション内の箇条書きを抽出
+        in_changes = False
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith('## Changes'):
+                in_changes = True
+                continue
+            elif (stripped.startswith('---') or stripped.startswith('##')) and in_changes:
+                break
+            elif in_changes and stripped.startswith('-'):
+                feature = stripped.lstrip('-').strip()
+                if feature and not feature.startswith('**Full') and not feature.startswith('**Author'):
+                    features.append(feature)
+    else:
+        # セクションなしの場合、全ての箇条書きを抽出
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith('-'):
+                feature = stripped.lstrip('-').strip()
+                if feature:
+                    features.append(feature)
 
     # X投稿テキスト生成（140文字以内）
     base_text = f"🎉 {title}リリース\n\n"
@@ -54,7 +62,6 @@ def generate_x_post(title: str, body: str) -> str:
     # 新機能を追加（文字数制限内で）
     feature_text = ""
     for feature in features[:3]:  # 最大3つまで
-        # そのまま使用（絵文字が既に含まれている）
         line = f"{feature}\n"
         if len(feature_text) + len(line) <= remaining:
             feature_text += line
