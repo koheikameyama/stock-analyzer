@@ -110,9 +110,12 @@ def send_slack_notification(
     # X投稿用テキストを生成（140文字制限）
     x_post_text = generate_x_post(title, body)
 
-    # X投稿用テキストを送信（weekly-summary形式）
+    # X投稿用テキストを送信（コピーしやすい形式）
+    # 各行を引用符で囲んで改行を保持
+    quoted_text = '\n'.join([f"> {line}" if line else ">" for line in x_post_text.split('\n')])
+
     payload = {
-        "text": f"<!channel> 📢 *X投稿テンプレート*\n\n以下をコピーしてXに投稿してください👇\n\n```\n{x_post_text}\n```\n\n文字数: {len(x_post_text)}",
+        "text": f"<!channel> 📢 *X投稿テンプレート*\n\n以下をコピーしてXに投稿してください👇\n\n{quoted_text}\n\n文字数: {len(x_post_text)}",
         "username": "Release Bot",
         "icon_emoji": ":rocket:"
     }
