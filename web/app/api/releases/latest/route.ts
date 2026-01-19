@@ -12,9 +12,7 @@ export async function GET() {
           'Accept': 'application/vnd.github.v3+json',
           'User-Agent': 'stock-analyzer',
         },
-        next: {
-          revalidate: 60, // 1分キャッシュ
-        },
+        cache: 'no-store', // キャッシュ無効化
       }
     );
 
