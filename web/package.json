@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",
-    "build": "npx prisma generate --schema=../prisma/schema.prisma && next build",
+    "build": "npx prisma migrate deploy --schema=../prisma/schema.prisma && npx prisma generate --schema=../prisma/schema.prisma && next build",
     "start": "next start",
     "lint": "next lint",
     "db:sync": "bash scripts/sync_production_to_local.sh"
