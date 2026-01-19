@@ -7,19 +7,15 @@
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { StockListTable } from '@/components/StockListTable';
-import { StockCard } from '@/components/StockCard';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { AnalysisDetailModal } from '@/components/AnalysisDetailModal';
 import { useStocks, useSectors } from '@/hooks/useStocks';
-
-type ViewMode = 'card' | 'table';
 
 export default function StocksPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [sector, setSector] = useState('');
   const [hasAnalysis, setHasAnalysis] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(
     null
   );
@@ -55,10 +51,8 @@ export default function StocksPage() {
   // 詳細モーダルを開く
   const handleStockClick = (stock: any) => {
     if (stock.latestAnalysis) {
-      // 分析結果がある場合は分析詳細モーダルを開く
       setSelectedAnalysisId(stock.latestAnalysis.id);
     } else {
-      // 分析結果がない場合は株価データモーダルを開く
       setSelectedTicker(stock.ticker);
     }
   };
@@ -179,65 +173,21 @@ export default function StocksPage() {
         {/* 銘柄一覧 */}
         {!isLoading && !error && (
           <>
-            {/* 件数表示と表示切り替え */}
+            {/* 件数表示 */}
             {pagination && (
               <div className="flex items-center justify-between text-sm text-surface-600">
                 <p>
                   全 {pagination.totalCount} 件中 {(page - 1) * 50 + 1}〜
                   {Math.min(page * 50, pagination.totalCount)} 件を表示
                 </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-surface-500">表示:</span>
-                  <div className="flex bg-white rounded-lg border border-surface-200 shadow-sm">
-                    <button
-                      onClick={() => setViewMode('card')}
-                      className={`px-3 py-1.5 rounded-l-lg transition-colors ${
-                        viewMode === 'card'
-                          ? 'bg-primary-600 text-white'
-                          : 'text-surface-700 hover:bg-surface-50'
-                      }`}
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => setViewMode('table')}
-                      className={`px-3 py-1.5 rounded-r-lg transition-colors ${
-                        viewMode === 'table'
-                          ? 'bg-primary-600 text-white'
-                          : 'text-surface-700 hover:bg-surface-50'
-                      }`}
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* カード表示 */}
-            {viewMode === 'card' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {stocks.map((stock) => (
-                  <StockCard
-                    key={stock.id}
-                    stock={stock}
-                    onClick={() => handleStockClick(stock)}
-                  />
-                ))}
               </div>
             )}
 
             {/* テーブル表示 */}
-            {viewMode === 'table' && (
-              <StockListTable
-                stocks={stocks}
-                onStockClick={handleStockClick}
-              />
-            )}
+            <StockListTable
+              stocks={stocks}
+              onStockClick={handleStockClick}
+            />
 
             {/* ページネーション */}
             {pagination && pagination.totalPages > 1 && (
