@@ -608,13 +608,18 @@ def main():
         conn = psycopg2.connect(DATABASE_URL)
         print("✅ データベース接続成功\n")
 
-        # 銘柄リストを取得
+        # 銘柄リストを取得（is_ai_analysis_target=trueのみ）
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute('SELECT id, ticker, market FROM stocks ORDER BY ticker')
+            cur.execute('''
+                SELECT id, ticker, market
+                FROM stocks
+                WHERE is_ai_analysis_target = true
+                ORDER BY ticker
+            ''')
             stocks = cur.fetchall()
 
         total_stocks = len(stocks)
-        print(f"📋 対象銘柄数: {total_stocks}件\n")
+        print(f"📋 分析対象銘柄数: {total_stocks}件\n")
 
         if total_stocks == 0:
             print("⚠️ 分析対象の銘柄が見つかりませんでした")
