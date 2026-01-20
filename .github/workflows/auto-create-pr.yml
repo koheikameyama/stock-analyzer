@@ -1,7 +1,10 @@
 name: Auto Create PR
 
 on:
-  create:
+  push:
+    branches:
+      - 'feature/**'
+      - 'hotfix/**'
 
 jobs:
   create-pr:
