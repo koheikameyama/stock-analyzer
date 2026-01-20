@@ -53,32 +53,83 @@ jobs:
             echo "No existing PR found"
           fi
 
-      - name: Create PR to main
-        if: steps.check_pr.outputs.needs_pr == 'true' && steps.existing_pr.outputs.has_pr == 'false'
+      - name: Get merged PRs since last deployment
+        if: steps.check_pr.outputs.needs_pr == 'true'
+        id: get_prs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # mainとdevelopの差分からマージコミットを取得
+          MERGE_COMMITS=$(git log origin/main..develop --merges --pretty=format:"%H %s" | grep "Merge pull request" || true)
+
+          if [ -z "$MERGE_COMMITS" ]; then
+            echo "No merged PRs found"
+            echo "pr_list=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # PRナンバーを抽出してタイトルを取得
+          PR_LIST=""
+          while read -r commit_hash commit_msg; do
+            PR_NUMBER=$(echo "$commit_msg" | grep -oP '#\K\d+' || true)
+            if [ -n "$PR_NUMBER" ]; then
+              PR_INFO=$(gh pr view $PR_NUMBER --json title,labels --jq '{title: .title, labels: [.labels[].name]}' || echo '{}')
+              PR_TITLE=$(echo "$PR_INFO" | jq -r '.title')
+              LABELS=$(echo "$PR_INFO" | jq -r '.labels[]' | tr '\n' ',' | sed 's/,$//')
+
+              if [ -n "$LABELS" ]; then
+                PR_LIST="${PR_LIST}- #${PR_NUMBER}: ${PR_TITLE} [${LABELS}]\n"
+              else
+                PR_LIST="${PR_LIST}- #${PR_NUMBER}: ${PR_TITLE}\n"
+              fi
+            fi
+          done <<< "$MERGE_COMMITS"
+
+          echo "pr_list<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$PR_LIST" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create or update PR to main
+        if: steps.check_pr.outputs.needs_pr == 'true'
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
+          PR_NUMBER: ${{ steps.existing_pr.outputs.pr_number }}
+          HAS_PR: ${{ steps.existing_pr.outputs.has_pr }}
+          PR_LIST: ${{ steps.get_prs.outputs.pr_list }}
         run: |
-          # develop → main のPRを作成
-          PR_TITLE="chore: Ready to deploy $(date -u +%Y-%m-%d)"
+          TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
 
           PR_BODY="## デプロイ準備完了
 
           developブランチの変更をmainにマージする準備ができました。
+
+          ### 含まれる変更
+          $PR_LIST
 
           ### 次のステップ
           1. このPRの内容を確認
           2. 問題なければマージ
           3. mainへのマージ後、Railwayが自動デプロイ
 
-          ⚠️ **注意**: このPRは参考用です。実際のデプロイは毎日深夜2:00の自動デプロイで行われます。"
+          ⚠️ **注意**: このPRは参考用です。実際のデプロイは毎日深夜2:00の自動デプロイで行われます。
 
-          PR_URL=$(gh pr create \
-            --base main \
-            --head develop \
-            --title "$PR_TITLE" \
-            --body "$PR_BODY")
+          ---
+          _Last updated: $TIMESTAMP_"
 
-          echo "Created PR: $PR_URL"
+          if [ "$HAS_PR" = "true" ]; then
+            # 既存PRを更新
+            gh pr edit $PR_NUMBER --body "$PR_BODY"
+            echo "Updated existing PR #$PR_NUMBER"
+          else
+            # 新規PR作成
+            PR_TITLE="chore: Ready to deploy $(date -u +%Y-%m-%d)"
+            PR_URL=$(gh pr create \
+              --base main \
+              --head develop \
+              --title "$PR_TITLE" \
+              --body "$PR_BODY")
+            echo "Created new PR: $PR_URL"
+          fi
 
       - name: Summary
         if: always()
@@ -89,7 +140,7 @@ jobs:
           if [ "${{ steps.check_pr.outputs.needs_pr }}" == "false" ]; then
             echo "ℹ️ **No PR Needed**: develop is in sync with main" >> $GITHUB_STEP_SUMMARY
           elif [ "${{ steps.existing_pr.outputs.has_pr }}" == "true" ]; then
-            echo "ℹ️ **PR Already Exists**: #${{ steps.existing_pr.outputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **PR Updated**: #${{ steps.existing_pr.outputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "✅ **PR Created**: develop → main" >> $GITHUB_STEP_SUMMARY
           fi
