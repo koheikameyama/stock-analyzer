@@ -1,0 +1,95 @@
+name: Create Deploy PR
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout develop branch
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Check if PR to main is needed
+        id: check_pr
+        run: |
+          # developとmainの差分を確認
+          git fetch origin main
+          DIFF_COUNT=$(git rev-list --count origin/main..develop)
+
+          if [ "$DIFF_COUNT" -eq 0 ]; then
+            echo "No changes to deploy"
+            echo "needs_pr=false" >> $GITHUB_OUTPUT
+          else
+            echo "Found $DIFF_COUNT commits to deploy"
+            echo "needs_pr=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check existing PR
+        if: steps.check_pr.outputs.needs_pr == 'true'
+        id: existing_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 既存のdevelop→mainのPRがあるか確認
+          EXISTING_PR=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number' || echo "")
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "has_pr=true" >> $GITHUB_OUTPUT
+            echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
+            echo "Existing PR found: #$EXISTING_PR"
+          else
+            echo "has_pr=false" >> $GITHUB_OUTPUT
+            echo "No existing PR found"
+          fi
+
+      - name: Create PR to main
+        if: steps.check_pr.outputs.needs_pr == 'true' && steps.existing_pr.outputs.has_pr == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          # develop → main のPRを作成
+          PR_TITLE="chore: Ready to deploy $(date -u +%Y-%m-%d)"
+
+          PR_BODY="## デプロイ準備完了
+
+          developブランチの変更をmainにマージする準備ができました。
+
+          ### 次のステップ
+          1. このPRの内容を確認
+          2. 問題なければマージ
+          3. mainへのマージ後、Railwayが自動デプロイ
+
+          ⚠️ **注意**: このPRは参考用です。実際のデプロイは毎日深夜2:00の自動デプロイで行われます。"
+
+          PR_URL=$(gh pr create \
+            --base main \
+            --head develop \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY")
+
+          echo "Created PR: $PR_URL"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### 📋 Deploy PR Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.check_pr.outputs.needs_pr }}" == "false" ]; then
+            echo "ℹ️ **No PR Needed**: develop is in sync with main" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.existing_pr.outputs.has_pr }}" == "true" ]; then
+            echo "ℹ️ **PR Already Exists**: #${{ steps.existing_pr.outputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **PR Created**: develop → main" >> $GITHUB_STEP_SUMMARY
+          fi
