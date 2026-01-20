@@ -65,53 +65,53 @@ jobs:
 
           # PR本文を生成してファイルに書き出し
           if [ "$BRANCH_TYPE" = "feature" ]; then
-            cat << 'PREOF' > /tmp/pr_body.md
-## 概要
-
-このPRは feature ブランチから自動作成されました。
-
-## 主な変更内容
-
-- TODO: 変更内容を記載してください
-
-## テスト計画
-
-- [ ] TODO: テスト項目を記載してください
-
-## バージョンラベル
-
-変更内容に応じて適切なラベルを付与してください：
-- `version:major` - 破壊的変更
-- `version:minor` - 新機能追加
-- `version:patch` - バグ修正（ユーザーに影響あり）
-- ラベルなし - 内部改善（ユーザーに影響なし）
-PREOF
+            {
+              echo "## 概要"
+              echo ""
+              echo "このPRは feature ブランチから自動作成されました。"
+              echo ""
+              echo "## 主な変更内容"
+              echo ""
+              echo "- TODO: 変更内容を記載してください"
+              echo ""
+              echo "## テスト計画"
+              echo ""
+              echo "- [ ] TODO: テスト項目を記載してください"
+              echo ""
+              echo "## バージョンラベル"
+              echo ""
+              echo "変更内容に応じて適切なラベルを付与してください："
+              echo "- version:major - 破壊的変更"
+              echo "- version:minor - 新機能追加"
+              echo "- version:patch - バグ修正（ユーザーに影響あり）"
+              echo "- ラベルなし - 内部改善（ユーザーに影響なし）"
+            } > /tmp/pr_body.md
           else
-            cat << 'PREOF' > /tmp/pr_body.md
-## 概要
-
-このPRは hotfix ブランチから自動作成されました。
-
-## 修正内容
-
-- TODO: 修正内容を記載してください
-
-## 影響範囲
-
-- TODO: 影響範囲を記載してください
-
-## テスト計画
-
-- [ ] TODO: テスト項目を記載してください
-
-## 注意事項
-
-⚠️ このPRはmainブランチへの直接マージです。慎重にレビューしてください。
-
-## バージョンラベル
-
-通常は `version:patch` を付与してください。
-PREOF
+            {
+              echo "## 概要"
+              echo ""
+              echo "このPRは hotfix ブランチから自動作成されました。"
+              echo ""
+              echo "## 修正内容"
+              echo ""
+              echo "- TODO: 修正内容を記載してください"
+              echo ""
+              echo "## 影響範囲"
+              echo ""
+              echo "- TODO: 影響範囲を記載してください"
+              echo ""
+              echo "## テスト計画"
+              echo ""
+              echo "- [ ] TODO: テスト項目を記載してください"
+              echo ""
+              echo "## 注意事項"
+              echo ""
+              echo "WARNING: このPRはmainブランチへの直接マージです。慎重にレビューしてください。"
+              echo ""
+              echo "## バージョンラベル"
+              echo ""
+              echo "通常は version:patch を付与してください。"
+            } > /tmp/pr_body.md
           fi
 
           # PRを作成
