@@ -60,6 +60,9 @@ stock-analyzer/
 ```bash
 git clone <repository-url>
 cd stock-analyzer
+
+# Git hooksのセットアップ（推奨）
+./scripts/git-hooks/setup.sh
 ```
 
 ### 2. Supabase CLIのインストール（オプション）

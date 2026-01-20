@@ -1,0 +1,15 @@
+#!/bin/sh
+# Pre-commit hook to prevent committing files with conflict markers
+
+# コンフリクトマーカーを検出
+if git diff --cached --name-only | xargs grep -l "^<<<<<<< \|^=======$\|^>>>>>>> " 2>/dev/null; then
+    echo "❌ エラー: コンフリクトマーカーが検出されました。"
+    echo ""
+    echo "コンフリクトを解決してから再度コミットしてください。"
+    echo ""
+    echo "コンフリクトマーカー:"
+    git diff --cached --name-only | xargs grep -n "^<<<<<<< \|^=======$\|^>>>>>>> " 2>/dev/null
+    exit 1
+fi
+
+exit 0
