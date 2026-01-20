@@ -83,6 +83,9 @@ npm run install:all
 # または個別に
 npm run web:install      # Web依存関係
 npm run batch:install    # Python依存関係
+
+# Git hooksの有効化（初回のみ）
+cd web && npm run prepare
 ```
 
 ### 4. 環境変数の設定
