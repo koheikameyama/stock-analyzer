@@ -2,8 +2,9 @@ name: Daily Stock Analysis
 
 on:
   # 毎日UTC 9:00（日本時間 18:00）に自動実行
-  schedule:
-    - cron: '0 9 * * *'
+  # Railway Cronサービスに移行したため無効化
+  # schedule:
+  #   - cron: '0 9 * * *'
 
   # プッシュ時のテスト実行（mainブランチのみ）
   push:
