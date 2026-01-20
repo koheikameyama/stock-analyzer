@@ -42,6 +42,18 @@ def generate_x_post(title: str, body: str) -> str:
                 break
             elif in_changes and stripped.startswith("-"):
                 feature = stripped.lstrip("-").strip()
+                # [major], [minor], [patch]ラベルを除去
+                if feature.startswith("[major]"):
+                    feature = feature[7:].strip()
+                elif feature.startswith("[minor]"):
+                    feature = feature[7:].strip()
+                elif feature.startswith("[patch]"):
+                    feature = feature[7:].strip()
+                # [テキスト](URL)形式からテキスト部分のみ抽出
+                if feature.startswith("[") and "](" in feature:
+                    end = feature.find("](")
+                    if end != -1:
+                        feature = feature[1:end]
                 if feature:
                     features.append(feature)
     else:
@@ -50,6 +62,18 @@ def generate_x_post(title: str, body: str) -> str:
             stripped = line.strip()
             if stripped.startswith("-"):
                 feature = stripped.lstrip("-").strip()
+                # [major], [minor], [patch]ラベルを除去
+                if feature.startswith("[major]"):
+                    feature = feature[7:].strip()
+                elif feature.startswith("[minor]"):
+                    feature = feature[7:].strip()
+                elif feature.startswith("[patch]"):
+                    feature = feature[7:].strip()
+                # [テキスト](URL)形式からテキスト部分のみ抽出
+                if feature.startswith("[") and "](" in feature:
+                    end = feature.find("](")
+                    if end != -1:
+                        feature = feature[1:end]
                 if feature:
                     features.append(feature)
 
