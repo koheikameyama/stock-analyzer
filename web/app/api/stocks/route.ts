@@ -84,10 +84,7 @@ export async function GET(request: NextRequest) {
           orderBy: { analysisDate: 'desc' },
           take: 1, // 最新の分析結果のみ
         },
-<<<<<<< HEAD
         analysisRequest: true, // リクエスト情報を含める
-=======
->>>>>>> develop
       },
       skip,
       take: limit,

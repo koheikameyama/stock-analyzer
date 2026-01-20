@@ -77,15 +77,11 @@ export async function GET(
         : undefined,
       priceHistory: history.quotes?.map((h: any) => ({
         date: new Date(h.date).toISOString().split('T')[0],
-<<<<<<< HEAD
         open: h.open,
         high: h.high,
         low: h.low,
         close: h.close,
         volume: h.volume,
-=======
-        close: h.close,
->>>>>>> develop
       })) || [],
     };
 
