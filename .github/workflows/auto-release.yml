@@ -1,4 +1,7 @@
-name: Auto Release
+name: Auto Release (Disabled)
+
+# このワークフローは無効化されています
+# リリース作成は deploy.yml で行われます
 
 on:
   pull_request:
@@ -8,8 +11,8 @@ on:
 
 jobs:
   create-release:
-    # PRがマージされ、かつversion:*ラベルが付いている場合のみ実行
-    if: github.event.pull_request.merged == true && (contains(github.event.pull_request.labels.*.name, 'version:major') || contains(github.event.pull_request.labels.*.name, 'version:minor') || contains(github.event.pull_request.labels.*.name, 'version:patch'))
+    # 無効化: デプロイ時にリリースを作成するため、このワークフローは実行されません
+    if: false
     runs-on: ubuntu-latest
 
     permissions:

@@ -123,34 +123,49 @@ git push origin feature/ポートフォリオ管理
 
 ## リリースフロー
 
-### 自動リリース（version:*ラベル付きPR）
+### 自動リリース（デプロイ時）
 ```
 1. PR作成 + version:minor ラベル付与
    ↓
 2. mainにマージ
    ↓
-3. GitHub Actions が自動実行
+3. 毎日深夜2:00にGitHub Actions（deploy.yml）が自動実行
+   - 前回デプロイからマージされたPRを集約
+   - version:*ラベルを確認
+   - 最も大きいバージョンアップを採用
+   ↓
+4. Railwayにデプロイ
+   ↓
+5. デプロイ成功後にGitHub Release作成
    - 現在のバージョン取得（v1.0.0）
    - 新バージョン計算（v1.1.0）
-   - GitHub Release作成
+   - リリースノート生成（全PRのリリースノートを集約）
    ↓
-4. Slack通知
+6. Slack通知
    - リリースノート
    - X投稿候補
    ↓
 5. 手動でX投稿
 ```
 
-### 手動リリース（複数PRをまとめてリリース）
+### 緊急デプロイ（手動実行）
 ```
-1. 複数のPR（ラベルなし）をmainにマージ
+1. 緊急のPRをmainにマージ
    ↓
-2. リリースしたいタイミングで
-   GitHub Actions → Release Notification → Run workflow
+2. GitHub Actions → Daily Deploy to Railway → Run workflow
    ↓
-3. タイトル・変更内容を入力して実行
+3. 即座にデプロイ実行
+   - version:*ラベルがあればリリース作成
+   - なければデプロイのみ
    ↓
-4. Slack通知 → X投稿
+4. Slack通知（リリース作成された場合）
+```
+
+### ラベルなしPRの扱い
+```
+- version:*ラベルがないPRはマージ可能
+- デプロイはされるが、リリースは作成されない
+- 次回のversion:*付きPRと一緒にデプロイされる
 ```
 
 ---
