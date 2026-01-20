@@ -9,7 +9,8 @@
     "postinstall": "npx prisma generate --schema=../prisma/schema.prisma",
     "start": "next start",
     "lint": "next lint",
-    "deploy": "npx opennextjs-cloudflare deploy"
+    "deploy": "npx opennextjs-cloudflare deploy",
+    "migrate-data": "npx tsx ../data-migration/import.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.2.0",
