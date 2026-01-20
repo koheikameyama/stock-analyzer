@@ -79,16 +79,18 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                     </svg>
                                     <span className="hidden lg:inline">設定</span>
                                 </Link>
-                                <button
-                                    onClick={() => setIsAboutModalOpen(true)}
-                                    className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-surface-100 text-surface-600 hover:text-surface-900 transition-colors"
-                                    aria-label="このサービスについて"
-                                >
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </button>
                             </nav>
+
+                            {/* このサービスについてボタン（常に表示） */}
+                            <button
+                                onClick={() => setIsAboutModalOpen(true)}
+                                className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-surface-100 text-surface-600 hover:text-surface-900 transition-colors"
+                                aria-label="このサービスについて"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </button>
 
                             {/* モバイルハンバーガーメニュー */}
                             <button
