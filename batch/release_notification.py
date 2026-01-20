@@ -103,12 +103,6 @@ def generate_x_post(title: str, body: str) -> str:
 
     final_text = base_text + feature_text + url
 
-    # 最終チェック：140文字を超えていないか確認
-    if len(final_text) > max_length:
-        raise ValueError(
-            f"生成されたX投稿テキストが{max_length}文字を超えています: {len(final_text)}文字"
-        )
-
     return final_text
 
 
