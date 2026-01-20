@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# コンフリクトマーカーを検出
+if git diff --cached --name-only | xargs grep -l "^<<<<<<< \|^=======$\|^>>>>>>> " 2>/dev/null; then
+    echo "❌ エラー: コンフリクトマーカーが検出されました。"
+    echo ""
+    echo "コンフリクトを解決してから再度コミットしてください。"
+    exit 1
+fi
+
+# lint-stagedを実行
+cd web && npx lint-staged
