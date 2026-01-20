@@ -189,7 +189,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Merge deploy PR
-        if: steps.check_changes.outputs.has_changes == 'true' && steps.version_check.outputs.should_release == 'true'
+        if: steps.check_changes.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
@@ -241,15 +241,17 @@ jobs:
             exit 0
           fi
 
+          echo "✅ **Deploy PR Merged**: develop → main" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
           if [ "${{ steps.version_check.outputs.should_release }}" == "true" ]; then
-            echo "✅ **Deploy PR Merged**: develop → main" >> $GITHUB_STEP_SUMMARY
             echo "📦 **Release Created**: ${{ steps.new_version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
             echo "- **Type**: ${{ steps.version_check.outputs.bump_type }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Included PRs" >> $GITHUB_STEP_SUMMARY
             echo "${{ steps.version_check.outputs.pr_list }}" >> $GITHUB_STEP_SUMMARY
           else
-            echo "ℹ️ **No Release**: No version labels found in deploy PR" >> $GITHUB_STEP_SUMMARY
-            echo "- PRは作成されていますが、version:*ラベルが付いていないため、リリースは作成されませんでした" >> $GITHUB_STEP_SUMMARY
-            echo "- デプロイPRはマージされません" >> $GITHUB_STEP_SUMMARY
+            echo "ℹ️ **No Release Created**: No version labels found in deploy PR" >> $GITHUB_STEP_SUMMARY
+            echo "- デプロイPRはマージされましたが、version:*ラベルが付いていないため、リリースは作成されませんでした" >> $GITHUB_STEP_SUMMARY
+            echo "- 内部改善やドキュメント更新などの変更はデプロイされます" >> $GITHUB_STEP_SUMMARY
           fi
