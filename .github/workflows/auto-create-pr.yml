@@ -63,12 +63,9 @@ jobs:
           # ブランチ名からタイトルを生成
           TITLE=$(echo "$BRANCH_NAME" | sed 's|^[^/]*/||' | sed 's|-| |g' | sed 's/\b\(.\)/\u\1/g')
 
+          # PR本文をファイルに書き出し
           if [ "$BRANCH_TYPE" = "feature" ]; then
-            gh pr create \
-              --base "$BASE_BRANCH" \
-              --head "$BRANCH_NAME" \
-              --title "$TITLE" \
-              --body "$(cat <<'EOFBODY'
+            cat > /tmp/pr_body.md <<'EOF'
 ## 概要
 
 このPRは feature ブランチから自動作成されました。
@@ -88,14 +85,9 @@ jobs:
 - `version:minor` - 新機能追加
 - `version:patch` - バグ修正（ユーザーに影響あり）
 - ラベルなし - 内部改善（ユーザーに影響なし）
-EOFBODY
-)"
+EOF
           else
-            gh pr create \
-              --base "$BASE_BRANCH" \
-              --head "$BRANCH_NAME" \
-              --title "$TITLE" \
-              --body "$(cat <<'EOFBODY'
+            cat > /tmp/pr_body.md <<'EOF'
 ## 概要
 
 このPRは hotfix ブランチから自動作成されました。
@@ -119,9 +111,15 @@ EOFBODY
 ## バージョンラベル
 
 通常は `version:patch` を付与してください。
-EOFBODY
-)"
+EOF
           fi
+
+          # PRを作成
+          gh pr create \
+            --base "$BASE_BRANCH" \
+            --head "$BRANCH_NAME" \
+            --title "$TITLE" \
+            --body-file /tmp/pr_body.md
 
           echo "PR created successfully"
 
