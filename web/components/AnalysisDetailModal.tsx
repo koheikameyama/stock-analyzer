@@ -9,7 +9,7 @@ import type { AnalysisDetail, Recommendation } from '../types/analysis';
 import { useAnalysisDetail } from '../hooks/useAnalyses';
 import { LoadingSpinner } from './LoadingSpinner';
 import { Tooltip as InfoTooltip } from './Tooltip';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { StockChart } from './StockChart';
 
 interface AnalysisDetailModalProps {
   analysisId?: string | null;
@@ -28,7 +28,11 @@ interface StockData {
   dividendYield?: number;
   priceHistory?: Array<{
     date: string;
+    open: number;
+    high: number;
+    low: number;
     close: number;
+    volume: number;
   }>;
 }
 
@@ -112,24 +116,26 @@ export const AnalysisDetailModal: React.FC<AnalysisDetailModalProps> = ({
 
   if (!analysisId && !ticker) return null;
 
-  // 株価チャート用のデータ整形
+  // 株価チャート用のデータ整形（OHLCと出来高を含む）
   const chartData = analysis?.stock.priceHistory
     ? [...analysis.stock.priceHistory]
       .reverse()
       .map((history) => ({
-        date: new Date(history.date).toLocaleDateString('ja-JP', {
-          month: 'numeric',
-          day: 'numeric',
-        }),
-        終値: parseFloat(history.close.toString()),
+        date: history.date,
+        open: parseFloat(history.open.toString()),
+        high: parseFloat(history.high.toString()),
+        low: parseFloat(history.low.toString()),
+        close: parseFloat(history.close.toString()),
+        volume: parseInt(history.volume.toString()),
       }))
     : stockData?.priceHistory
     ? stockData.priceHistory.map((history) => ({
-        date: new Date(history.date).toLocaleDateString('ja-JP', {
-          month: 'numeric',
-          day: 'numeric',
-        }),
-        終値: parseFloat(history.close.toString()),
+        date: history.date,
+        open: history.open,
+        high: history.high,
+        low: history.low,
+        close: history.close,
+        volume: history.volume,
       }))
     : [];
 
@@ -179,27 +185,27 @@ export const AnalysisDetailModal: React.FC<AnalysisDetailModalProps> = ({
               <div className="grid md:grid-cols-2 gap-6">
                 {/* Stock Info */}
                 <div className="bg-surface-50 rounded-xl p-5 border border-surface-100">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <div className="text-sm font-medium text-surface-500 mb-1">
+                  <div className="mb-4">
+                    <div className="flex justify-between items-start gap-3 mb-3">
+                      <div className="text-sm font-medium text-surface-500">
                         {analysis ? (analysis.stock.market === 'JP' ? '日本市場' : '米国市場') : '日本市場'} • {analysis?.stock.sector || stockData?.sector || '不明'}
                       </div>
-                      <h3 className="text-2xl font-bold text-surface-900 tracking-tight">
-                        {analysis?.stock.name || stockData?.name || '不明'}
-                      </h3>
-                      <div className="font-mono text-surface-500">
-                        {analysis?.stock.ticker || stockData?.ticker || '不明'}
-                      </div>
+                      {analysis ? (
+                        <div className={`px-3 py-1 rounded-full text-sm font-bold border whitespace-nowrap flex-shrink-0 ${getRecommendationColor(analysis.recommendation)}`}>
+                          {analysis.recommendation === 'Buy' ? '買い' : analysis.recommendation === 'Sell' ? '売り' : '様子見'}
+                        </div>
+                      ) : (
+                        <div className="px-3 py-1 rounded-full text-sm font-bold border bg-surface-100 text-surface-600 border-surface-300 whitespace-nowrap flex-shrink-0">
+                          AI分析なし
+                        </div>
+                      )}
                     </div>
-                    {analysis ? (
-                      <div className={`px-3 py-1 rounded-full text-sm font-bold border ${getRecommendationColor(analysis.recommendation)}`}>
-                        {analysis.recommendation === 'Buy' ? '買い' : analysis.recommendation === 'Sell' ? '売り' : '様子見'}
-                      </div>
-                    ) : (
-                      <div className="px-3 py-1 rounded-full text-sm font-bold border bg-surface-100 text-surface-600 border-surface-300">
-                        AI分析なし
-                      </div>
-                    )}
+                    <h3 className="text-2xl font-bold text-surface-900 tracking-tight break-words">
+                      {analysis?.stock.name || stockData?.name || '不明'}
+                    </h3>
+                    <div className="font-mono text-surface-500">
+                      {analysis?.stock.ticker || stockData?.ticker || '不明'}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mt-4">
@@ -316,53 +322,20 @@ export const AnalysisDetailModal: React.FC<AnalysisDetailModalProps> = ({
               {/* Chart */}
               {chartData.length > 0 && (
                 <div>
-                  <h4 className="text-lg font-bold text-surface-900 mb-3">株価推移（30日間）</h4>
-                  <div className="bg-white rounded-xl p-4 border border-surface-200 shadow-sm h-[320px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis
-                          dataKey="date"
-                          tick={{ fontSize: 12, fill: '#64748b' }}
-                          axisLine={false}
-                          tickLine={false}
-                          dy={10}
-                        />
-                        <YAxis
-                          tick={{ fontSize: 12, fill: '#64748b' }}
-                          axisLine={false}
-                          tickLine={false}
-                          dx={-10}
-                        />
-                        <Tooltip
-                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="終値"
-                          name="終値"
-                          stroke="#6366f1"
-                          strokeWidth={2}
-                          dot={false}
-                          activeDot={{ r: 6, fill: '#6366f1', strokeWidth: 0 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <h4 className="text-lg font-bold text-surface-900 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                    </svg>
+                    株価チャート
+                  </h4>
+                  <StockChart
+                    data={chartData}
+                    ticker={analysis?.stock.ticker || stockData?.ticker || ''}
+                  />
                 </div>
               )}
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="bg-surface-50 border-t border-surface-100 px-6 py-4 flex justify-end sticky bottom-0">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 bg-white border border-surface-300 hover:bg-surface-50 text-surface-700 font-medium rounded-lg transition-colors shadow-sm"
-          >
-            閉じる
-          </button>
         </div>
       </div>
     </div>

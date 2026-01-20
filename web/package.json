@@ -11,7 +11,8 @@
     "lint": "next lint",
     "deploy": "npx opennextjs-cloudflare deploy",
     "migrate-data": "npx tsx ../data-migration/import.ts",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:sync": "bash scripts/sync_production_to_local.sh"
   },
   "dependencies": {
     "@prisma/client": "^6.2.0",

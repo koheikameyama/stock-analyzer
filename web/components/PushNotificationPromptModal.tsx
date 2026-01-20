@@ -62,17 +62,36 @@ export const PushNotificationPromptModal: React.FC = () => {
   };
 
   /**
+   * タイムアウト付きPromise
+   */
+  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+      )
+    ]);
+  };
+
+  /**
    * プッシュ通知を有効にする
    */
   const handleEnable = async () => {
     setIsLoading(true);
 
     try {
-      // Service Workerを登録
-      const registration = await navigator.serviceWorker.register('/custom-sw.js', {
-        scope: '/'
-      });
-      await navigator.serviceWorker.ready;
+      // Service Workerを登録（10秒タイムアウト）
+      const registration = await withTimeout(
+        navigator.serviceWorker.register('/custom-sw.js', { scope: '/' }),
+        10000,
+        'Service Workerの登録がタイムアウトしました'
+      );
+
+      await withTimeout(
+        navigator.serviceWorker.ready,
+        10000,
+        'Service Workerの準備がタイムアウトしました'
+      );
 
       // 通知の許可をリクエスト
       const permission = await Notification.requestPermission();
@@ -86,34 +105,43 @@ export const PushNotificationPromptModal: React.FC = () => {
       // VAPID公開鍵を取得
       const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!vapidPublicKey) {
-        console.error('VAPID公開鍵が設定されていません');
-        setIsOpen(false);
-        return;
+        throw new Error('VAPID公開鍵が設定されていません');
       }
 
-      // プッシュ通知を購読
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-      });
+      // プッシュ通知を購読（30秒タイムアウト）
+      const subscription = await withTimeout(
+        registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        }),
+        30000,
+        'プッシュ通知の購読がタイムアウトしました'
+      );
 
-      // サーバーに購読情報を送信
-      const response = await fetch('/api/push-notifications/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(subscription.toJSON()),
-      });
+      // サーバーに購読情報を送信（10秒タイムアウト）
+      const response = await withTimeout(
+        fetch('/api/push-notifications/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(subscription.toJSON()),
+        }),
+        10000,
+        'サーバーへの送信がタイムアウトしました'
+      );
 
       if (!response.ok) {
-        throw new Error('購読の保存に失敗しました');
+        const errorData = await response.json();
+        throw new Error(`購読の保存に失敗しました: ${JSON.stringify(errorData)}`);
       }
 
       localStorage.setItem('pushNotificationPromptClosed', 'true');
       setIsOpen(false);
+      alert('プッシュ通知を有効にしました！');
     } catch (error) {
       console.error('プッシュ通知の有効化エラー:', error);
+      alert(`エラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
       setIsOpen(false);
     } finally {
       setIsLoading(false);

@@ -9,6 +9,9 @@ import { AnalysisService } from '@/lib/analysis.service';
 // SQLiteを使用するためNode.jsランタイムを指定
 export const runtime = 'nodejs';
 
+// Vercelの関数タイムアウトを60秒に設定（データベースクエリが重い場合）
+export const maxDuration = 60;
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;

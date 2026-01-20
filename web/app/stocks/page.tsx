@@ -10,7 +10,9 @@ import { StockListTable } from '@/components/StockListTable';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { AnalysisDetailModal } from '@/components/AnalysisDetailModal';
 import { AdBanner } from '@/components/AdBanner';
+import { Toast, useToast } from '@/components/Toast';
 import { useStocks, useSectors } from '@/hooks/useStocks';
+import { addRequestedStock, isStockRequested } from '@/lib/cookies';
 
 export default function StocksPage() {
   const [page, setPage] = useState(1);
@@ -21,6 +23,11 @@ export default function StocksPage() {
     null
   );
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+  const [isRequesting, setIsRequesting] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Toast管理
+  const { toasts, showToast, removeToast } = useToast();
 
   // データ取得
   const { data, isLoading, error } = useStocks({
@@ -62,6 +69,52 @@ export default function StocksPage() {
   const handleModalClose = () => {
     setSelectedAnalysisId(null);
     setSelectedTicker(null);
+  };
+
+  // 分析リクエスト処理
+  const handleRequestAnalysis = async (stock: any) => {
+    // 既にリクエスト済みかチェック
+    if (isStockRequested(stock.ticker)) {
+      showToast('この銘柄は既にリクエスト済みです', 'info');
+      return;
+    }
+
+    setIsRequesting(true);
+
+    try {
+      const response = await fetch('/api/analysis-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          stockId: stock.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('リクエストに失敗しました');
+      }
+
+      const result = await response.json();
+
+      // Cookieに保存
+      addRequestedStock(stock.ticker);
+
+      // テーブルの状態を更新
+      setRefreshKey(prev => prev + 1);
+
+      // 成功通知
+      showToast(
+        `${stock.name}(${stock.ticker})の分析をリクエストしました！`,
+        'success'
+      );
+    } catch (error) {
+      console.error('分析リクエストエラー:', error);
+      showToast('リクエストに失敗しました。もう一度お試しください。', 'error');
+    } finally {
+      setIsRequesting(false);
+    }
   };
 
   return (
@@ -193,8 +246,10 @@ export default function StocksPage() {
 
             {/* テーブル表示 */}
             <StockListTable
+              key={refreshKey}
               stocks={stocks}
               onStockClick={handleStockClick}
+              onRequestAnalysis={handleRequestAnalysis}
             />
 
             {/* 広告エリア2: テーブル後 */}
@@ -214,7 +269,7 @@ export default function StocksPage() {
                   disabled={!pagination.hasPrevPage}
                   className="px-4 py-2 border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  ← 前へ
+                  <span className="hidden md:inline">← </span>前へ
                 </button>
                 <div className="flex items-center gap-1">
                   {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
@@ -251,7 +306,7 @@ export default function StocksPage() {
                   disabled={!pagination.hasNextPage}
                   className="px-4 py-2 border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  次へ →
+                  次へ<span className="hidden md:inline"> →</span>
                 </button>
               </div>
             )}
@@ -264,6 +319,16 @@ export default function StocksPage() {
           ticker={selectedTicker}
           onClose={handleModalClose}
         />
+
+        {/* Toast通知 */}
+        {toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => removeToast(toast.id)}
+          />
+        ))}
       </div>
     </Layout>
   );

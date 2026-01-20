@@ -138,6 +138,118 @@ gh project item-add 2 --owner koheikameyama --url https://github.com/koheikameya
 
 **重要: issueを作成したら、必ずプロジェクトへの追加も実行してください。**
 
+## N+1問題の防止
+
+**データベースクエリでN+1問題を発生させないでください。**
+
+N+1問題は、データベースクエリが必要以上に多く実行される問題で、サーバーレス環境では接続プール枯渇やタイムアウトの原因になります。
+
+### ✅ DO（推奨）
+
+1. **`include`でリレーションを取得**
+   ```typescript
+   // ✅ 1クエリで全て取得
+   const analyses = await prisma.analysis.findMany({
+     include: { stock: true }
+   });
+   ```
+
+2. **一括操作には`deleteMany`/`updateMany`を使う**
+   ```typescript
+   // ✅ 1クエリで一括削除
+   await prisma.record.deleteMany({
+     where: { id: { in: ids } }
+   });
+   ```
+
+3. **全データ取得後、メモリ上でフィルタリング**
+   ```typescript
+   // ✅ 1クエリで全取得 → メモリ上で最新のみ抽出
+   const allAnalyses = await prisma.analysis.findMany({
+     include: { stock: true },
+     orderBy: { analysisDate: 'desc' }
+   });
+
+   const latestByStock = new Map();
+   for (const analysis of allAnalyses) {
+     if (!latestByStock.has(analysis.stockId)) {
+       latestByStock.set(analysis.stockId, analysis);
+     }
+   }
+   ```
+
+### ❌ DON'T（避ける）
+
+1. **ループ内でデータベースクエリを実行しない**
+   ```typescript
+   // ❌ 悪い例（Nクエリ発生）
+   for (const stock of stocks) {
+     const analysis = await prisma.analysis.findFirst({
+       where: { stockId: stock.id }
+     });
+   }
+   ```
+
+2. **ループ内で個別削除/更新しない**
+   ```typescript
+   // ❌ 悪い例（Nクエリ発生）
+   for (const id of ids) {
+     await prisma.record.delete({ where: { id } });
+   }
+   ```
+
+### 実装時のチェックリスト
+
+- [ ] ループ内で`await prisma.*`を呼んでいないか？
+- [ ] `include`でリレーションを効率的に取得しているか？
+- [ ] 複数レコードの更新/削除に`*Many`を使っているか？
+
+### 過去の問題例
+
+- `/api/analyses/latest`: 16クエリ → タイムアウト → 1クエリに最適化
+- `/api/push-notifications/send`: ループ内delete → deleteMany に変更
+
+詳細は [N+1問題防止ガイド](./docs/n-plus-1-prevention.md) を参照してください。
+
+## UI/UXデザイン原則
+
+**スマホ表示を最優先に設計してください。**
+
+### モバイルファーストの原則
+
+1. **スマホでの表示を最初に考える**
+   - UIコンポーネントを設計する際は、まずスマホでの表示を確認
+   - 横幅が狭い画面でもレイアウトが崩れないように設計
+   - テキストやボタンが見切れないように配慮
+
+2. **レスポンシブデザインの必須項目**
+   - `flex-wrap` で自動改行を活用
+   - `whitespace-nowrap` と `flex-shrink-0` で重要な要素を保護
+   - `break-words` で長いテキストを適切に改行
+   - `gap-3` などで適切な余白を確保
+
+3. **実装時のチェックリスト**
+   - [ ] スマホ（375px幅）で表示が崩れないか？
+   - [ ] 長い企業名やテキストで要素が重ならないか？
+   - [ ] ツールチップが画面端で見切れないか？
+   - [ ] タッチ操作しやすいサイズか？（最小44x44px）
+
+### 具体例
+
+```tsx
+// ❌ 悪い例：スマホで崩れる
+<div className="flex justify-between items-start">
+  <h3>{longCompanyName}</h3>
+  <div>ステータス</div>
+</div>
+
+// ✅ 良い例：スマホでも崩れない
+<div className="flex justify-between items-start gap-3">
+  <h3 className="break-words">{longCompanyName}</h3>
+  <div className="whitespace-nowrap flex-shrink-0">ステータス</div>
+</div>
+```
+
 ## コミットメッセージ・PR本文
 
 **「🤖 Generated with [Claude Code]」は含めないでください。**
