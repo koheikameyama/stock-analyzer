@@ -31,29 +31,76 @@
 - ✅ **すべての変更は必ずPR経由で行う**
 - ✅ **PRのマージはユーザーが手動で行う（自動マージ禁止）**
 
-### ⚠️ 重要：ブランチ作成ルール
+### ⚠️ 重要：ブランチ運用ルール
 
-**すべての変更作業はfeatureブランチで行ってください。**
+**このプロジェクトでは以下のブランチ構成を使用します：**
 
-- **新機能・破壊的変更**: 必ずブランチ経由で PR を作成 → version:major/minor ラベル付与
-- **バグ修正・軽微な改善**: 必ずブランチ経由で PR を作成 → ラベルなし
-- **⚠️ 既にマージされたブランチは絶対に使わない**
-  - 常に最新のmainから新しいブランチを作成する
-  - マージ済みブランチを再利用すると、古いコミットやコンフリクトが発生する
-- ブランチ名の例:
-  - `feature/リリースノート機能`
-  - `feature/issue-33-design-improvement`
-  - `feature/ポートフォリオ機能`
-  - `fix/mobile-ui-bug`
+#### ブランチ構成
+- **main**: 本番環境
+- **develop**: 開発環境
+- **feature/***: 新機能・改善（developから切る → developへPR）
+- **hotfix/***: 緊急修正（mainから切る → mainへPR）
 
-### ブランチ作成確認
+#### ブランチ作成ルール
+1. **feature/** ブランチ
+   - **切り元**: develop
+   - **PR先**: develop
+   - **用途**: 通常の開発作業（新機能、改善、バグ修正など）
+   - **例**: `feature/release-note-feature`, `feature/performance-improvement`
 
-作業を始める前に、必ずユーザーに確認してください：
+2. **hotfix/** ブランチ
+   - **切り元**: main
+   - **PR先**: main
+   - **用途**: 本番環境の緊急修正のみ
+   - **例**: `hotfix/critical-login-bug`, `hotfix/security-patch`
+
+3. **重要な制約**
+   - ❌ **既にマージされたブランチは絶対に使わない**
+   - ❌ **feature/とhotfix/以外のプレフィックスは使用禁止**
+   - ✅ **ブランチ名は英語のケバブケース（lowercase-with-hyphens）**
+   - ✅ **ブランチをpushすると自動的にPRが作成されます**
+
+### 🚨 作業開始時の必須確認
+
+**作業を始める前に、必ず以下の手順を実行してください：**
+
+#### 1. 現在のブランチ状態をチェック
+
+```bash
+# 現在のブランチを確認
+git branch --show-current
+
+# そのブランチのPR状態を確認
+gh pr list --head <current-branch> --state all
+```
+
+#### 2. マージ済みブランチかチェック
+
+以下のいずれかに該当する場合は、**絶対にそのブランチで作業してはいけません**：
+
+- ❌ PRが既にマージされている（state: MERGED）
+- ❌ PRが既にクローズされている（state: CLOSED）
+- ❌ main または develop ブランチである
+
+**マージ済みブランチで作業しようとした場合：**
+1. ユーザーに警告を出す
+2. 「このブランチは既にマージ済みです。新しいブランチを作成しますか？」と確認
+3. developから新しいfeatureブランチを作成
+
+#### 3. 新しいブランチ作成の確認
 
 **質問例:**
-- 「この作業用に `feature/〇〇` ブランチを作成しますか？」
-- 「この新機能は `version:minor` でリリースしますか？」
-- 「バグ修正なのでラベルなしで良いですか？」
+- 「どのブランチで作業しますか？」
+  - 既存のブランチで続ける（マージ済みでない場合のみ）
+  - 新しいブランチを作成
+    - 通常の開発 → developから feature/〇〇
+    - 本番の緊急修正 → mainから hotfix/〇〇
+
+#### 4. 作業開始前のチェックリスト
+
+- [ ] 現在のブランチがマージ済みでないことを確認
+- [ ] main/developブランチで作業していないことを確認
+- [ ] 適切なブランチ（feature/またはhotfix/）で作業していることを確認
 
 ### PR作成時の注意
 
@@ -137,6 +184,126 @@ gh project item-add 2 --owner koheikameyama --url https://github.com/koheikameya
 ```
 
 **重要: issueを作成したら、必ずプロジェクトへの追加も実行してください。**
+
+## N+1問題の防止
+
+**データベースクエリでN+1問題を発生させないでください。**
+
+N+1問題は、データベースクエリが必要以上に多く実行される問題で、サーバーレス環境では接続プール枯渇やタイムアウトの原因になります。
+
+### ✅ DO（推奨）
+
+1. **`include`でリレーションを取得**
+   ```typescript
+   // ✅ 1クエリで全て取得
+   const analyses = await prisma.analysis.findMany({
+     include: { stock: true }
+   });
+   ```
+
+2. **一括操作には`deleteMany`/`updateMany`を使う**
+   ```typescript
+   // ✅ 1クエリで一括削除
+   await prisma.record.deleteMany({
+     where: { id: { in: ids } }
+   });
+   ```
+
+3. **全データ取得後、メモリ上でフィルタリング**
+   ```typescript
+   // ✅ 1クエリで全取得 → メモリ上で最新のみ抽出
+   const allAnalyses = await prisma.analysis.findMany({
+     include: { stock: true },
+     orderBy: { analysisDate: 'desc' }
+   });
+
+   const latestByStock = new Map();
+   for (const analysis of allAnalyses) {
+     if (!latestByStock.has(analysis.stockId)) {
+       latestByStock.set(analysis.stockId, analysis);
+     }
+   }
+   ```
+
+### ❌ DON'T（避ける）
+
+1. **ループ内でデータベースクエリを実行しない**
+   ```typescript
+   // ❌ 悪い例（Nクエリ発生）
+   for (const stock of stocks) {
+     const analysis = await prisma.analysis.findFirst({
+       where: { stockId: stock.id }
+     });
+   }
+   ```
+
+2. **ループ内で個別削除/更新しない**
+   ```typescript
+   // ❌ 悪い例（Nクエリ発生）
+   for (const id of ids) {
+     await prisma.record.delete({ where: { id } });
+   }
+   ```
+
+### 実装時のチェックリスト
+
+- [ ] ループ内で`await prisma.*`を呼んでいないか？
+- [ ] `include`でリレーションを効率的に取得しているか？
+- [ ] 複数レコードの更新/削除に`*Many`を使っているか？
+
+### 過去の問題例
+
+- `/api/analyses/latest`: 16クエリ → タイムアウト → 1クエリに最適化
+- `/api/push-notifications/send`: ループ内delete → deleteMany に変更
+
+詳細は [N+1問題防止ガイド](./docs/n-plus-1-prevention.md) を参照してください。
+
+## UI/UXデザイン原則
+
+**スマホ表示を最優先に設計してください。**
+
+### モバイルファーストの原則
+
+1. **スマホでの表示を最初に考える**
+   - UIコンポーネントを設計する際は、まずスマホでの表示を確認
+   - 横幅が狭い画面でもレイアウトが崩れないように設計
+   - テキストやボタンが見切れないように配慮
+
+2. **レスポンシブデザインの必須項目**
+   - `flex-wrap` で自動改行を活用
+   - `whitespace-nowrap` と `flex-shrink-0` で重要な要素を保護
+   - `break-words` で長いテキストを適切に改行
+   - `gap-3` などで適切な余白を確保
+
+3. **実装時のチェックリスト**
+   - [ ] スマホ（375px幅）で表示が崩れないか？
+   - [ ] 長い企業名やテキストで要素が重ならないか？
+   - [ ] ツールチップが画面端で見切れないか？
+   - [ ] タッチ操作しやすいサイズか？（最小44x44px）
+
+### 具体例
+
+```tsx
+// ❌ 悪い例：スマホで崩れる
+<div className="flex justify-between items-start">
+  <h3>{longCompanyName}</h3>
+  <div>ステータス</div>
+</div>
+
+// ✅ 良い例：スマホでも崩れない
+<div className="flex justify-between items-start gap-3">
+  <h3 className="break-words">{longCompanyName}</h3>
+  <div className="whitespace-nowrap flex-shrink-0">ステータス</div>
+</div>
+```
+
+## コミットメッセージ・PR本文
+
+**「🤖 Generated with [Claude Code]」は含めないでください。**
+
+- コミットメッセージに含めない
+- PRの本文に含めない
+- シンプルで読みやすいメッセージを心がける
 
 ## 例外
 

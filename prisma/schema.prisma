@@ -35,8 +35,9 @@ model Stock {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // リレーション
-  analyses     Analysis[]
-  priceHistory PriceHistory[]
+  analyses        Analysis[]
+  priceHistory    PriceHistory[]
+  analysisRequest AnalysisRequest?
 
   // インデックス
   @@index([market])
@@ -148,4 +149,27 @@ model PushSubscription {
   // インデックス
   @@index([endpoint])
   @@map("push_subscriptions")
+}
+
+// 分析リクエストモデル
+model AnalysisRequest {
+  // 主キー
+  id String @id @default(uuid())
+
+  // 外部キー - Stock
+  stockId String @map("stock_id")
+  stock   Stock  @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  // リクエスト数
+  requestCount Int @default(1) @map("request_count")
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // ユニーク制約とインデックス
+  @@unique([stockId])
+  @@index([stockId])
+  @@index([requestCount])
+  @@map("analysis_requests")
 }

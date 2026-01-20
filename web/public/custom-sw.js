@@ -1,10 +1,14 @@
 /**
  * カスタムService Worker（push通知対応版）
- * next-pwaが生成したsw.jsを読み込んだ後、push通知のハンドラーを追加
+ * push通知専用の軽量なService Worker
  */
 
-// next-pwaが生成したService Workerを読み込み
-importScripts('/sw.js');
+// next-pwaが生成したsw.jsがあれば読み込む（本番環境のみ）
+try {
+  importScripts('/sw.js');
+} catch (e) {
+  console.log('[Custom SW] sw.js not found, using standalone mode');
+}
 
 // プッシュ通知を受信したときの処理
 self.addEventListener('push', function(event) {

@@ -10,7 +10,9 @@
     "start": "next start",
     "lint": "next lint",
     "deploy": "npx opennextjs-cloudflare deploy",
-    "migrate-data": "npx tsx ../data-migration/import.ts"
+    "migrate-data": "npx tsx ../data-migration/import.ts",
+    "prepare": "husky",
+    "db:sync": "bash scripts/sync_production_to_local.sh"
   },
   "dependencies": {
     "@prisma/client": "^6.2.0",
@@ -23,6 +25,7 @@
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
     "recharts": "^3.6.0",
+    "swr": "^2.3.8",
     "web-push": "^3.6.7",
     "yahoo-finance2": "^3.11.2",
     "zod": "^3.24.1"
@@ -35,11 +38,28 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^9",
     "eslint-config-next": "^15.1.6",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "postcss": "^8.4.49",
+    "prettier": "^3.8.0",
     "prisma": "^6.2.0",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "wrangler": "^4.59.2"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ],
+    "../batch/**/*.py": [
+      "black",
+      "flake8"
+    ]
   }
 }

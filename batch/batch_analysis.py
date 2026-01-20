@@ -23,6 +23,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 from openai import OpenAI
+from datetime import timezone
 
 # プロジェクトルートからの.envファイル読み込み
 env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
@@ -396,7 +397,7 @@ def save_analysis_to_db(conn, stock_id: str, stock_data: StockData, analysis: Di
 
 def save_price_history_to_db(conn, stock_id: str, stock_data: StockData) -> bool:
     """
-    株価履歴をデータベースに保存
+    株価履歴をデータベースに保存（N+1問題を防ぐため一括処理）
 
     Args:
         conn: データベース接続
@@ -407,34 +408,22 @@ def save_price_history_to_db(conn, stock_id: str, stock_data: StockData) -> bool
         bool: 保存成功の可否
     """
     try:
-        with conn.cursor() as cur:
-            for price_data in stock_data.price_history:
-                # UUIDを生成
-                price_id = str(uuid.uuid4())
+        if not stock_data.price_history:
+            return True
 
-                # 既存データがあれば更新、なければ挿入
-                cur.execute("""
-                    INSERT INTO price_history (
-                        id,
-                        stock_id,
-                        date,
-                        open,
-                        high,
-                        low,
-                        close,
-                        volume,
-                        created_at,
-                        updated_at
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-                    ON CONFLICT (stock_id, date) DO UPDATE SET
-                        open = EXCLUDED.open,
-                        high = EXCLUDED.high,
-                        low = EXCLUDED.low,
-                        close = EXCLUDED.close,
-                        volume = EXCLUDED.volume,
-                        updated_at = NOW()
-                """, (
-                    price_id,
+        with conn.cursor() as cur:
+            # まず該当日付の既存データを削除
+            dates = [p['date'] for p in stock_data.price_history]
+            cur.execute("""
+                DELETE FROM price_history
+                WHERE stock_id = %s AND date = ANY(%s)
+            """, (stock_id, dates))
+
+            # 一括挿入用のデータを準備
+            values = []
+            for price_data in stock_data.price_history:
+                values.append((
+                    str(uuid.uuid4()),  # id
                     stock_id,
                     price_data['date'],
                     price_data['open'],
@@ -443,6 +432,21 @@ def save_price_history_to_db(conn, stock_id: str, stock_data: StockData) -> bool
                     price_data['close'],
                     price_data['volume']
                 ))
+
+            # 一括挿入（1クエリ）
+            execute_values_query = """
+                INSERT INTO price_history (
+                    id, stock_id, date, open, high, low, close, volume,
+                    created_at, updated_at
+                ) VALUES %s
+            """
+            from psycopg2.extras import execute_values
+            execute_values(
+                cur,
+                execute_values_query,
+                [(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], 'NOW()', 'NOW()') for v in values],
+                template="(%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())"
+            )
 
         conn.commit()
         return True

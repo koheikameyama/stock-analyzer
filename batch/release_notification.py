@@ -8,47 +8,48 @@ import os
 import sys
 import json
 import requests
-from typing import Optional
 
 
 def generate_x_post(title: str, body: str) -> str:
     """
-    X投稿用のテキストを生成（140文字制限）
+    X投稿用のテキストを生成（日本語140文字制限、ぶつ切り防止）
 
     Args:
         title: リリースタイトル
         body: リリース内容
 
     Returns:
-        str: X投稿テキスト
+        str: X投稿テキスト（140文字以内、項目単位で完結）
     """
     # 箇条書きを抽出
-    lines = body.split('\n')
+    lines = body.split("\n")
     features = []
 
     # "## 更新内容"セクションがあるかチェック
-    has_changes_section = any('## 更新内容' in line for line in lines)
+    has_changes_section = any("## 更新内容" in line for line in lines)
 
     if has_changes_section:
         # "## 更新内容"セクション内の箇条書きを抽出
         in_changes = False
         for line in lines:
             stripped = line.strip()
-            if stripped.startswith('## 更新内容'):
+            if stripped.startswith("## 更新内容"):
                 in_changes = True
                 continue
-            elif (stripped.startswith('---') or stripped.startswith('##')) and in_changes:
+            elif (
+                stripped.startswith("---") or stripped.startswith("##")
+            ) and in_changes:
                 break
-            elif in_changes and stripped.startswith('-'):
-                feature = stripped.lstrip('-').strip()
+            elif in_changes and stripped.startswith("-"):
+                feature = stripped.lstrip("-").strip()
                 if feature:
                     features.append(feature)
     else:
         # セクションなしの場合、全ての箇条書きを抽出
         for line in lines:
             stripped = line.strip()
-            if stripped.startswith('-'):
-                feature = stripped.lstrip('-').strip()
+            if stripped.startswith("-"):
+                feature = stripped.lstrip("-").strip()
                 if feature:
                     features.append(feature)
 
@@ -56,44 +57,57 @@ def generate_x_post(title: str, body: str) -> str:
     def shorten_feature(feature: str) -> str:
         """項目を簡潔に変換（絵文字はそのまま保持）"""
         # "新機能:" や "改善:" の部分を削除
-        feature = feature.replace('新機能:', '').replace('改善:', '').replace('修正:', '')
+        feature = (
+            feature.replace("新機能:", "").replace("改善:", "").replace("修正:", "")
+        )
         # "〜を" や "〜が" などの助詞を削除してさらに簡潔に
-        feature = feature.replace('を受け取れるようになりました', '')
-        feature = feature.replace('できるようになりました', '')
-        feature = feature.replace('しました', '')
+        feature = feature.replace("を受け取れるようになりました", "")
+        feature = feature.replace("できるようになりました", "")
+        feature = feature.replace("しました", "")
         return feature.strip()
 
     # X投稿テキスト生成（140文字以内）
     base_text = f"🎉 {title}リリース\n\n"
-    url = "\n\nhttps://stock-analyzer.jp/\n\n#AI株式分析 #投資ツール"
+    url = "\n\nhttps://stock-analyzer.jp/\n#AI株式分析 #投資ツール"
 
-    # 残り文字数を計算
-    remaining = 140 - len(base_text) - len(url)
+    # 残り文字数を計算（140文字制限）
+    max_length = 140
+    remaining = max_length - len(base_text) - len(url)
 
-    # 新機能を追加（文字数制限内で）
+    # 新機能を追加（文字数制限内で、ぶつ切り防止）
     feature_text = ""
-    for feature in features[:3]:  # 最大3つまで
+    added_count = 0
+
+    for feature in features:
         # まず簡潔版を試す
         shortened = shorten_feature(feature)
-        short_line = f"{shortened}\n"
+        short_line = f"・{shortened}\n"
 
-        # 簡潔版で入るかチェック
+        # 簡潔版で入るかチェック（項目全体が入る場合のみ追加）
         if len(feature_text) + len(short_line) <= remaining:
             feature_text += short_line
-        # 元のままでも入るかチェック
-        elif len(feature_text) + len(f"{feature}\n") <= remaining:
-            feature_text += f"{feature}\n"
+            added_count += 1
+        # 元のままでも入るかチェック（項目全体が入る場合のみ追加）
+        elif len(feature_text) + len(f"・{feature}\n") <= remaining:
+            feature_text += f"・{feature}\n"
+            added_count += 1
         else:
+            # 入らない場合は追加せずに終了（ぶつ切り防止）
             break
 
-    return base_text + feature_text + url
+    # 省略記号を追加（追加できなかった項目がある場合）
+    if added_count < len(features):
+        ellipsis = "他"
+        if len(feature_text) + len(ellipsis) <= remaining:
+            feature_text += ellipsis
+
+    final_text = base_text + feature_text + url
+
+    return final_text
 
 
 def send_slack_notification(
-    webhook_url: str,
-    title: str,
-    body: str,
-    post_template: str
+    webhook_url: str, title: str, body: str, post_template: str
 ) -> bool:
     """
     SlackにX投稿テンプレートを送信する
@@ -111,18 +125,24 @@ def send_slack_notification(
     x_post_text = generate_x_post(title, body)
 
     # X投稿用テキストを送信
+    message_text = (
+        f"<!channel> 📢 *X投稿テンプレート*\n\n"
+        f"以下をコピーしてXに投稿してください👇\n\n"
+        f"```\n{x_post_text}\n```\n\n"
+        f"文字数: {len(x_post_text)}"
+    )
     payload = {
-        "text": f"<!channel> 📢 *X投稿テンプレート*\n\n以下をコピーしてXに投稿してください👇\n\n```\n{x_post_text}\n```\n\n文字数: {len(x_post_text)}",
+        "text": message_text,
         "username": "Release Bot",
-        "icon_emoji": ":rocket:"
+        "icon_emoji": ":rocket:",
     }
 
     try:
         response = requests.post(
             webhook_url,
             data=json.dumps(payload),
-            headers={'Content-Type': 'application/json'},
-            timeout=10
+            headers={"Content-Type": "application/json"},
+            timeout=10,
         )
         response.raise_for_status()
         print(f"✅ Slackへの送信成功: {response.status_code}")
@@ -135,10 +155,10 @@ def send_slack_notification(
 def main():
     """メイン処理"""
     # 環境変数から取得
-    webhook_url = os.getenv('SLACK_WEBHOOK_URL')
-    title = os.getenv('TITLE', '')
-    body = os.getenv('BODY', '')
-    post_template = os.getenv('POST_TEMPLATE', '')
+    webhook_url = os.getenv("SLACK_WEBHOOK_URL")
+    title = os.getenv("TITLE", "")
+    body = os.getenv("BODY", "")
+    post_template = os.getenv("POST_TEMPLATE", "")
 
     # バリデーション
     if not webhook_url:
@@ -161,5 +181,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

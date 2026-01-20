@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import webpush from 'web-push';
-
-const prisma = new PrismaClient();
 
 /**
  * プッシュ通知送信API
@@ -58,6 +56,8 @@ export async function POST(request: NextRequest) {
     });
 
     // すべての購読者に通知を送信
+    const invalidEndpoints: string[] = []; // 無効なエンドポイントを収集
+
     const results = await Promise.allSettled(
       subscriptions.map(async (subscription) => {
         try {
@@ -75,18 +75,27 @@ export async function POST(request: NextRequest) {
         } catch (error: any) {
           console.error('通知送信エラー:', error);
 
-          // 410 Gone または 404 Not Found の場合は購読情報を削除
+          // 410 Gone または 404 Not Found の場合は無効なエンドポイントとして記録
           if (error.statusCode === 410 || error.statusCode === 404) {
-            await prisma.pushSubscription.delete({
-              where: { endpoint: subscription.endpoint },
-            });
-            console.log(`無効な購読情報を削除: ${subscription.endpoint}`);
+            invalidEndpoints.push(subscription.endpoint);
           }
 
           return { success: false, endpoint: subscription.endpoint, error };
         }
       })
     );
+
+    // N+1問題を防ぐため、無効な購読情報を一括削除
+    if (invalidEndpoints.length > 0) {
+      await prisma.pushSubscription.deleteMany({
+        where: {
+          endpoint: {
+            in: invalidEndpoints,
+          },
+        },
+      });
+      console.log(`無効な購読情報を一括削除: ${invalidEndpoints.length}件`);
+    }
 
     // 成功・失敗をカウント
     const successCount = results.filter(
@@ -107,7 +116,5 @@ export async function POST(request: NextRequest) {
       { error: '通知の送信に失敗しました' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

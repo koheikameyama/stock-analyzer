@@ -11,8 +11,8 @@ const globalForPrisma = globalThis as unknown as {
 
 // Vercelサーバーレス環境用の接続プール設定
 const createPrismaClient = () => {
+  // pgbouncerが接続プールを管理するため、シンプルな設定にする
   return new PrismaClient({
-    datasourceUrl: process.env.DATABASE_URL,
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
 };
