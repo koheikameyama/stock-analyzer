@@ -9,7 +9,7 @@ import sys
 import time
 import uuid
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, Dict, Any, List
 from collections import deque
@@ -390,6 +390,7 @@ def save_analysis_to_db(conn, stock_id: str, stock_data: StockData, analysis: Di
 
     except Exception as e:
         conn.rollback()
+        print(f"❌ DB保存エラー: {str(e)}")
         return False
 
 
@@ -448,6 +449,7 @@ def save_price_history_to_db(conn, stock_id: str, stock_data: StockData) -> bool
 
     except Exception as e:
         conn.rollback()
+        print(f"❌ DB保存エラー: {str(e)}")
         return False
 
 
