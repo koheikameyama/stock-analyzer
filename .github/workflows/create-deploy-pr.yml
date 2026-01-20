@@ -73,22 +73,9 @@ jobs:
           while read -r commit_hash commit_msg; do
             PR_NUMBER=$(echo "$commit_msg" | grep -oP '#\K\d+' || true)
             if [ -n "$PR_NUMBER" ]; then
-              # タイトルとラベルを取得（エラー時は空のJSONを返す）
-              PR_INFO=$(gh pr view $PR_NUMBER --json title,labels 2>/dev/null || echo '{"title":"","labels":[]}')
-              PR_TITLE=$(echo "$PR_INFO" | jq -r '.title // ""')
-
-              # タイトルが空の場合はコミットメッセージから抽出
-              if [ -z "$PR_TITLE" ]; then
-                PR_TITLE=$(echo "$commit_msg" | sed 's/Merge pull request #[0-9]* from [^ ]* //')
-              fi
-
-              LABELS=$(echo "$PR_INFO" | jq -r '.labels[]?.name // empty' 2>/dev/null | tr '\n' ',' | sed 's/,$//')
-
-              if [ -n "$LABELS" ]; then
-                PR_LIST="${PR_LIST}- #${PR_NUMBER}: ${PR_TITLE} [${LABELS}]\n"
-              else
-                PR_LIST="${PR_LIST}- #${PR_NUMBER}: ${PR_TITLE}\n"
-              fi
+              # コミットメッセージからタイトルを抽出（GraphQL不使用）
+              PR_TITLE=$(echo "$commit_msg" | sed 's/Merge pull request #[0-9]* from [^ ]* //')
+              PR_LIST="${PR_LIST}- #${PR_NUMBER}: ${PR_TITLE}\n"
             fi
           done <<< "$MERGE_COMMITS"
 
