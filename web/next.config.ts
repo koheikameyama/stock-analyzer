@@ -10,23 +10,6 @@ if (process.env.NODE_ENV === 'development') {
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
-  // リダイレクト設定
-  async redirects() {
-    return [
-      {
-        source: '/:path*',
-        has: [
-          {
-            type: 'host',
-            value: 'stock-analyzer.jp',
-          },
-        ],
-        destination: 'https://www.stock-analyzer.jp/:path*',
-        permanent: true,
-      },
-    ];
-  },
-
   // ホットリロードの最適化
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {
