@@ -73,6 +73,7 @@ jobs:
           while read -r commit_hash commit_msg; do
             PR_NUMBER=$(echo "$commit_msg" | grep -oP '#\K\d+' || true)
             if [ -n "$PR_NUMBER" ]; then
+<<<<<<< HEAD
               # タイトルとラベルを取得（エラー時は空のJSONを返す）
               PR_INFO=$(gh pr view $PR_NUMBER --json title,labels 2>/dev/null || echo '{"title":"","labels":[]}')
               PR_TITLE=$(echo "$PR_INFO" | jq -r '.title // ""')
@@ -83,6 +84,11 @@ jobs:
               fi
 
               LABELS=$(echo "$PR_INFO" | jq -r '.labels[]?.name // empty' 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+=======
+              PR_INFO=$(gh pr view $PR_NUMBER --json title,labels --jq '{title: .title, labels: [.labels[].name]}' || echo '{}')
+              PR_TITLE=$(echo "$PR_INFO" | jq -r '.title')
+              LABELS=$(echo "$PR_INFO" | jq -r '.labels[]' | tr '\n' ',' | sed 's/,$//')
+>>>>>>> develop
 
               if [ -n "$LABELS" ]; then
                 PR_LIST="${PR_LIST}- #${PR_NUMBER}: ${PR_TITLE} [${LABELS}]\n"

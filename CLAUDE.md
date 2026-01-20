@@ -138,6 +138,14 @@ gh project item-add 2 --owner koheikameyama --url https://github.com/koheikameya
 
 **重要: issueを作成したら、必ずプロジェクトへの追加も実行してください。**
 
+## コミットメッセージ・PR本文
+
+**「🤖 Generated with [Claude Code]」は含めないでください。**
+
+- コミットメッセージに含めない
+- PRの本文に含めない
+- シンプルで読みやすいメッセージを心がける
+
 ## 例外
 
 - コード自体（変数名、関数名、クラス名など）は英語で記述する
