@@ -16,7 +16,7 @@ def generate_x_post(title: str, body: str) -> str:
 
     Args:
         title: リリースタイトル
-        body: リリース内容
+        body: リリース内容（シンプルな箇条書き）
 
     Returns:
         str: X投稿テキスト（140文字以内、項目単位で完結）
@@ -25,70 +25,22 @@ def generate_x_post(title: str, body: str) -> str:
     lines = body.split("\n")
     features = []
 
-    # "## 更新内容"セクションがあるかチェック
-    has_changes_section = any("## 更新内容" in line for line in lines)
-
-    if has_changes_section:
-        # "## 更新内容"セクション内の箇条書きを抽出
-        in_changes = False
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith("## 更新内容"):
-                in_changes = True
-                continue
-            elif (
-                stripped.startswith("---") or stripped.startswith("##")
-            ) and in_changes:
-                break
-            elif in_changes and stripped.startswith("-"):
-                feature = stripped.lstrip("-").strip()
-                # [major], [minor], [patch]ラベルを除去
-                if feature.startswith("[major]"):
-                    feature = feature[7:].strip()
-                elif feature.startswith("[minor]"):
-                    feature = feature[7:].strip()
-                elif feature.startswith("[patch]"):
-                    feature = feature[7:].strip()
-                # [テキスト](URL)形式からテキスト部分のみ抽出
-                if feature.startswith("[") and "](" in feature:
-                    end = feature.find("](")
-                    if end != -1:
-                        feature = feature[1:end]
-                if feature:
-                    features.append(feature)
-    else:
-        # セクションなしの場合、全ての箇条書きを抽出
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith("-"):
-                feature = stripped.lstrip("-").strip()
-                # [major], [minor], [patch]ラベルを除去
-                if feature.startswith("[major]"):
-                    feature = feature[7:].strip()
-                elif feature.startswith("[minor]"):
-                    feature = feature[7:].strip()
-                elif feature.startswith("[patch]"):
-                    feature = feature[7:].strip()
-                # [テキスト](URL)形式からテキスト部分のみ抽出
-                if feature.startswith("[") and "](" in feature:
-                    end = feature.find("](")
-                    if end != -1:
-                        feature = feature[1:end]
-                if feature:
-                    features.append(feature)
-
-    # 各項目を簡潔に変換
-    def shorten_feature(feature: str) -> str:
-        """項目を簡潔に変換（絵文字はそのまま保持）"""
-        # "新機能:" や "改善:" の部分を削除
-        feature = (
-            feature.replace("新機能:", "").replace("改善:", "").replace("修正:", "")
-        )
-        # "〜を" や "〜が" などの助詞を削除してさらに簡潔に
-        feature = feature.replace("を受け取れるようになりました", "")
-        feature = feature.replace("できるようになりました", "")
-        feature = feature.replace("しました", "")
-        return feature.strip()
+    # "## 更新内容"セクション内の箇条書きを抽出
+    in_changes = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("## 更新内容"):
+            in_changes = True
+            continue
+        elif in_changes and (
+            stripped.startswith("---") or stripped.startswith("##")
+        ):
+            break
+        elif in_changes and stripped.startswith("-"):
+            # "- " を除去（ユーザー向け説明文をそのまま使用）
+            feature = stripped.lstrip("-").strip()
+            if feature:
+                features.append(feature)
 
     # X投稿テキスト生成（140文字以内）
     base_text = f"🎉 {title}リリース\n\n"
@@ -98,22 +50,16 @@ def generate_x_post(title: str, body: str) -> str:
     max_length = 140
     remaining = max_length - len(base_text) - len(url)
 
-    # 新機能を追加（文字数制限内で、ぶつ切り防止）
+    # ユーザー向け説明を追加（文字数制限内で、ぶつ切り防止）
     feature_text = ""
     added_count = 0
 
     for feature in features:
-        # まず簡潔版を試す
-        shortened = shorten_feature(feature)
-        short_line = f"・{shortened}\n"
+        line = f"・{feature}\n"
 
-        # 簡潔版で入るかチェック（項目全体が入る場合のみ追加）
-        if len(feature_text) + len(short_line) <= remaining:
-            feature_text += short_line
-            added_count += 1
-        # 元のままでも入るかチェック（項目全体が入る場合のみ追加）
-        elif len(feature_text) + len(f"・{feature}\n") <= remaining:
-            feature_text += f"・{feature}\n"
+        # 項目全体が入る場合のみ追加（ぶつ切り防止）
+        if len(feature_text) + len(line) <= remaining:
+            feature_text += line
             added_count += 1
         else:
             # 入らない場合は追加せずに終了（ぶつ切り防止）
