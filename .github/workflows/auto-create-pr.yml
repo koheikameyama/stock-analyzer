@@ -2,9 +2,6 @@ name: Auto Create PR
 
 on:
   create:
-    branches:
-      - 'feature/**'
-      - 'hotfix/**'
 
 jobs:
   create-pr:
@@ -25,15 +22,17 @@ jobs:
         run: |
           BRANCH_NAME="${{ github.ref_name }}"
 
-          if [[ "$BRANCH_NAME" == feature/* ]]; then
-            echo "base=develop" >> $GITHUB_OUTPUT
-            echo "type=feature" >> $GITHUB_OUTPUT
-          elif [[ "$BRANCH_NAME" == hotfix/* ]]; then
+          # hotfixのみmainへPR、それ以外は全てdevelopへPR
+          if [[ "$BRANCH_NAME" == hotfix/* ]]; then
             echo "base=main" >> $GITHUB_OUTPUT
             echo "type=hotfix" >> $GITHUB_OUTPUT
+          elif [[ "$BRANCH_NAME" == main || "$BRANCH_NAME" == develop ]]; then
+            # main/developブランチ自体はスキップ
+            echo "Skip PR creation for protected branch"
+            exit 0
           else
-            echo "Unknown branch type: $BRANCH_NAME"
-            exit 1
+            echo "base=develop" >> $GITHUB_OUTPUT
+            echo "type=feature" >> $GITHUB_OUTPUT
           fi
 
       - name: Check if PR already exists
