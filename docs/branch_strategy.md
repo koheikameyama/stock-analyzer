@@ -3,9 +3,12 @@
 ## ブランチ構成
 
 ```
-main (本番・保護)
-  └── feature/* (機能開発)
-  └── fix/* (バグ修正)
+main (本番・保護・デプロイ済みコードのみ)
+  ↑ 毎日深夜2:00に自動マージ
+  |
+develop (開発・保護・デプロイ前コード)
+  ├── feature/* (機能開発)
+  ├── fix/* (バグ修正)
   └── hotfix/* (緊急修正)
 ```
 
@@ -38,9 +41,9 @@ hotfix/データ取得エラー
 
 ### 1. ブランチ作成
 ```bash
-# mainから最新を取得
-git checkout main
-git pull origin main
+# developから最新を取得
+git checkout develop
+git pull origin develop
 
 # 機能ブランチ作成
 git checkout -b feature/ポートフォリオ管理
@@ -57,28 +60,27 @@ git push origin feature/ポートフォリオ管理
 ```
 
 ### 3. PR作成
-1. GitHubでPRを作成
+1. GitHubでPRを作成（**base: develop**）
 2. PRテンプレートに従って記入
 3. **重要**: 適切なバージョンラベルを付与
    - `version:major` - 破壊的変更
    - `version:minor` - 新機能追加
    - `version:patch` - バグ修正
+   - ラベルなし - リリース不要（内部改善）
 
 ### 4. レビュー・マージ
 1. セルフレビュー（コード確認）
 2. 動作確認
-3. mainにマージ
+3. **developにマージ**（mainではない！）
 
-### 5. 自動リリース
-- **version:*** ラベルが付いている場合:
-  - 自動的にバージョン計算
+### 5. デプロイとリリース
+- **自動デプロイ**: 毎日深夜2:00にdevelop→mainが自動マージされてデプロイ
+- **手動デプロイ**: 緊急時はGitHub Actionsから手動実行可能
+- **リリース作成**: デプロイ時に自動実行
+  - develop内のversion:*ラベル付きPRを集約
+  - 最も大きいバージョンアップを採用
   - GitHub Release作成
-  - Slack通知
-  - X投稿候補が届く
-
-- **ラベルなしの場合**:
-  - リリースは作成されない
-  - 次回リリース時にまとめて含まれる
+  - Slack通知・X投稿候補
 
 ---
 
@@ -123,47 +125,43 @@ git push origin feature/ポートフォリオ管理
 
 ## リリースフロー
 
-### 自動リリース（デプロイ時）
+### 自動デプロイ・リリース
 ```
-1. PR作成 + version:minor ラベル付与
+1. feature/機能A + version:minor → develop にマージ
+2. feature/機能B（ラベルなし） → develop にマージ
+3. feature/機能C + version:patch → develop にマージ
    ↓
-2. mainにマージ
+4. 毎日深夜2:00にGitHub Actions（deploy.yml）が自動実行
    ↓
-3. 毎日深夜2:00にGitHub Actions（deploy.yml）が自動実行
-   - 前回デプロイからマージされたPRを集約
-   - version:*ラベルを確認
-   - 最も大きいバージョンアップを採用
+5. develop → main の自動PR作成・マージ
+   - mainとdevelopの差分を確認
+   - 差分があればPR自動作成
+   - PRを自動マージ
    ↓
-4. Railwayにデプロイ
+6. developのversion:*ラベル付きPRを集約
+   - 最も大きいバージョンアップを採用（minor）
    ↓
-5. デプロイ成功後にGitHub Release作成
-   - 現在のバージョン取得（v1.0.0）
+7. Railwayにデプロイ
+   ↓
+8. デプロイ成功後にGitHub Release作成
    - 新バージョン計算（v1.1.0）
    - リリースノート生成（全PRのリリースノートを集約）
    ↓
-6. Slack通知
-   - リリースノート
-   - X投稿候補
-   ↓
-5. 手動でX投稿
+9. Slack通知 → X投稿候補 → 手動でX投稿
 ```
 
 ### 緊急デプロイ（手動実行）
 ```
-1. 緊急のPRをmainにマージ
+1. 緊急のPRをdevelopにマージ
    ↓
 2. GitHub Actions → Daily Deploy to Railway → Run workflow
    ↓
-3. 即座にデプロイ実行
-   - version:*ラベルがあればリリース作成
-   - なければデプロイのみ
-   ↓
-4. Slack通知（リリース作成された場合）
+3. 即座にdevelop→mainマージ＆デプロイ実行
 ```
 
 ### ラベルなしPRの扱い
 ```
-- version:*ラベルがないPRはマージ可能
+- version:*ラベルがないPRはdevelopにマージ可能
 - デプロイはされるが、リリースは作成されない
 - 次回のversion:*付きPRと一緒にデプロイされる
 ```
@@ -175,11 +173,17 @@ git push origin feature/ポートフォリオ管理
 ### main ブランチ
 - ✅ 直接プッシュ禁止
 - ✅ PR必須
-- ⚠️ batch/配下の変更は注意（自動実行される）
+- ✅ developからのPRのみ許可
+- ⚠️ デプロイ済みコードのみ（production環境と完全一致）
+
+### develop ブランチ
+- ✅ 直接プッシュ禁止
+- ✅ PR必須
+- ✅ feature/*, fix/*, hotfix/* からのPRのみ許可
 
 ### 設定方法
 GitHub → Settings → Branches → Add rule
-- Branch name pattern: `main`
+- Branch name pattern: `main` / `develop`
 - [x] Require pull request before merging
 
 ---
