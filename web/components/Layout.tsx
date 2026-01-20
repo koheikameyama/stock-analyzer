@@ -43,7 +43,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                         </Link>
                         <div className="flex items-center gap-2">
                             {/* デスクトップナビゲーション */}
-                            <nav className="hidden md:flex items-center gap-2">
+                            <nav className="hidden lg:flex items-center gap-2">
                                 <Link
                                     href="/"
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
@@ -93,7 +93,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                             {/* モバイルハンバーガーメニュー */}
                             <button
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                                className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg hover:bg-surface-100 transition-colors"
+                                className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg hover:bg-surface-100 transition-colors"
                                 aria-label="メニュー"
                             >
                                 {isMobileMenuOpen ? (
@@ -112,7 +112,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
                 {/* モバイルメニュー展開 */}
                 {isMobileMenuOpen && (
-                    <div className="md:hidden border-t border-surface-200 bg-white">
+                    <div className="lg:hidden border-t border-surface-200 bg-white">
                         <nav className="max-w-7xl mx-auto px-4 py-4 space-y-2">
                             <Link
                                 href="/"
