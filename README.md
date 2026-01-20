@@ -275,8 +275,8 @@ develop (開発・デフォルトブランチ)
 
 6. **自動デプロイ**
    - 毎日深夜2:00に`develop → main`が自動マージ
-   - Railwayに自動デプロイ
    - version:*ラベルがあれば自動的にGitHub Release作成
+   - mainにpush → Railwayが自動デプロイ
    - 緊急時は手動でワークフロー実行可能
 
 ### コード規約

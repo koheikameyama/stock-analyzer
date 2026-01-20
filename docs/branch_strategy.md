@@ -133,32 +133,31 @@ git push origin feature/ポートフォリオ管理
 2. feature/機能B（ラベルなし） → develop にマージ
 3. feature/機能C + version:patch → develop にマージ
    ↓
-4. 毎日深夜2:00にGitHub Actions（deploy.yml）が自動実行
+4. 毎日深夜2:00にGitHub Actions自動実行
    ↓
 5. develop → main の自動PR作成・マージ
    - mainとdevelopの差分を確認
-   - 差分があればPR自動作成
-   - PRを自動マージ
+   - 差分があればPR自動作成・マージ
    ↓
-6. developのversion:*ラベル付きPRを集約
+6. developのversion:*ラベル付きPRを集約してリリース作成
    - 最も大きいバージョンアップを採用（minor）
-   ↓
-7. Railwayにデプロイ
-   ↓
-8. デプロイ成功後にGitHub Release作成
    - 新バージョン計算（v1.1.0）
    - リリースノート生成（全PRのリリースノートを集約）
    ↓
-9. Slack通知 → X投稿候補 → 手動でX投稿
+7. mainにpush → Railwayが自動デプロイ
+   ↓
+8. Slack通知 → X投稿候補 → 手動でX投稿
 ```
 
 ### 緊急デプロイ（手動実行）
 ```
 1. 緊急のPRをdevelopにマージ
    ↓
-2. GitHub Actions → Daily Deploy to Railway → Run workflow
+2. GitHub Actions → Daily Merge and Release → Run workflow
    ↓
-3. 即座にdevelop→mainマージ＆デプロイ実行
+3. 即座にdevelop→mainマージ＆リリース作成
+   ↓
+4. mainにpush → Railwayが自動デプロイ
 ```
 
 ### ラベルなしPRの扱い

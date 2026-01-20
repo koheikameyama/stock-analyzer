@@ -1,4 +1,4 @@
-name: Daily Deploy to Railway
+name: Daily Merge and Release
 
 on:
   # 毎日UTC 17:00（日本時間 2:00）に自動実行
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  merge-and-deploy:
+  merge-and-release:
     runs-on: ubuntu-latest
 
     permissions:
@@ -246,28 +246,8 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Create deployment tag
-        if: steps.check_changes.outputs.has_changes == 'true'
-        run: |
-          # 現在の日時でデプロイタグを作成
-          DEPLOY_TAG="deploy-$(date -u +%Y%m%d-%H%M%S)"
-          git tag $DEPLOY_TAG
-          git push origin $DEPLOY_TAG
-          echo "Created deployment tag: $DEPLOY_TAG"
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy to Railway
-        id: railway_deploy
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          railway up --service edc96582-ae82-460d-babb-086eecd15167
-          echo "deploy_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
-
       - name: Create GitHub Release
-        if: steps.version_check.outputs.should_release == 'true' && steps.railway_deploy.outcome == 'success'
+        if: steps.check_changes.outputs.has_changes == 'true' && steps.version_check.outputs.should_release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
@@ -284,25 +264,17 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          echo "### 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Merge and Release Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ steps.check_changes.outputs.has_changes }}" == "false" ]; then
-            echo "ℹ️ **No Changes**: develop has no changes since last deployment" >> $GITHUB_STEP_SUMMARY
+            echo "ℹ️ **No Changes**: develop has no changes since last merge" >> $GITHUB_STEP_SUMMARY
             exit 0
           fi
 
           if [ -n "${{ steps.merge_pr.outputs.pr_url }}" ]; then
-            echo "✅ **PR Merged**: ${{ steps.merge_pr.outputs.pr_url }}" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          if [ "${{ steps.railway_deploy.outcome }}" == "success" ]; then
-            echo "✅ **Railway Deploy**: Success" >> $GITHUB_STEP_SUMMARY
-            echo "- **Time**: ${{ steps.railway_deploy.outputs.deploy_time }}" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ **Railway Deploy**: Failed" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **develop → main merged**: ${{ steps.merge_pr.outputs.pr_url }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Railway will automatically deploy from main branch" >> $GITHUB_STEP_SUMMARY
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
