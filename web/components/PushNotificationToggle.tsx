@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import {
+  isServiceWorkerSupported,
+  registerServiceWorker,
+  urlBase64ToUint8Array,
+} from '@/lib/serviceWorker';
 
 /**
  * プッシュ通知購読トグルコンポーネント
@@ -14,48 +19,26 @@ export default function PushNotificationToggle() {
   useEffect(() => {
     // プッシュ通知がサポートされているか確認
     const checkSupport = async () => {
-      if ('serviceWorker' in navigator && 'PushManager' in window) {
-        setIsSupported(true);
+      if (!isServiceWorkerSupported()) {
+        return;
+      }
 
-        // Service Workerを登録（push通知対応版）
-        try {
-          const registration = await navigator.serviceWorker.register('/custom-sw.js', {
-            scope: '/'
-          });
-          console.log('Custom Service Worker registered:', registration);
+      setIsSupported(true);
 
-          // Service Workerが準備完了するまで待つ
-          await navigator.serviceWorker.ready;
+      // Service Workerを登録して購読状態を確認
+      try {
+        const registration = await registerServiceWorker();
 
-          // 既存の購読状態を確認
-          const subscription = await registration.pushManager.getSubscription();
-          setIsSubscribed(subscription !== null);
-        } catch (error) {
-          console.error('Service Worker登録または購読状態の確認に失敗しました:', error);
-        }
+        // 既存の購読状態を確認
+        const subscription = await registration.pushManager.getSubscription();
+        setIsSubscribed(subscription !== null);
+      } catch (error) {
+        console.error('Service Worker登録または購読状態の確認に失敗しました:', error);
       }
     };
 
     checkSupport();
   }, []);
-
-  /**
-   * Base64文字列をUint8Arrayに変換
-   */
-  const urlBase64ToUint8Array = (base64String: string): ArrayBuffer => {
-    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding)
-      .replace(/\-/g, '+')
-      .replace(/_/g, '/');
-
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray.buffer;
-  };
 
   /**
    * プッシュ通知を購読する
@@ -64,8 +47,8 @@ export default function PushNotificationToggle() {
     setIsLoading(true);
 
     try {
-      // Service Workerの登録を待つ
-      const registration = await navigator.serviceWorker.ready;
+      // Service Workerの登録を取得
+      const registration = await registerServiceWorker();
 
       // 通知の許可をリクエスト
       const permission = await Notification.requestPermission();
@@ -121,7 +104,7 @@ export default function PushNotificationToggle() {
     setIsLoading(true);
 
     try {
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await registerServiceWorker();
       const subscription = await registration.pushManager.getSubscription();
 
       if (!subscription) {
