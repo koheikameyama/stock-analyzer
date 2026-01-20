@@ -25,7 +25,7 @@ jobs:
         run: |
           # developとmainの差分を確認
           git fetch origin develop
-          DIFF_COUNT=$(git rev-list --count develop..main)
+          DIFF_COUNT=$(git rev-list --count origin/develop..main)
 
           if [ "$DIFF_COUNT" -eq 0 ]; then
             echo "No changes to sync"
