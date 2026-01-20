@@ -1,0 +1,139 @@
+name: Auto Create PR
+
+on:
+  create:
+    branches:
+      - 'feature/**'
+      - 'hotfix/**'
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine target branch
+        id: target
+        run: |
+          BRANCH_NAME="${{ github.ref_name }}"
+
+          if [[ "$BRANCH_NAME" == feature/* ]]; then
+            echo "base=develop" >> $GITHUB_OUTPUT
+            echo "type=feature" >> $GITHUB_OUTPUT
+          elif [[ "$BRANCH_NAME" == hotfix/* ]]; then
+            echo "base=main" >> $GITHUB_OUTPUT
+            echo "type=hotfix" >> $GITHUB_OUTPUT
+          else
+            echo "Unknown branch type: $BRANCH_NAME"
+            exit 1
+          fi
+
+      - name: Check if PR already exists
+        id: check_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EXISTING_PR=$(gh pr list --head ${{ github.ref_name }} --base ${{ steps.target.outputs.base }} --state open --json number --jq '.[0].number' || echo "")
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
+            echo "Existing PR found: #$EXISTING_PR"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "No existing PR found"
+          fi
+
+      - name: Create PR
+        if: steps.check_pr.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH_NAME="${{ github.ref_name }}"
+          BASE_BRANCH="${{ steps.target.outputs.base }}"
+          BRANCH_TYPE="${{ steps.target.outputs.type }}"
+
+          # ブランチ名からタイトルを生成
+          TITLE=$(echo "$BRANCH_NAME" | sed 's|^[^/]*/||' | sed 's|-| |g' | sed 's/\b\(.\)/\u\1/g')
+
+          if [ "$BRANCH_TYPE" = "feature" ]; then
+            gh pr create \
+              --base "$BASE_BRANCH" \
+              --head "$BRANCH_NAME" \
+              --title "$TITLE" \
+              --body "$(cat <<'EOFBODY'
+## 概要
+
+このPRは feature ブランチから自動作成されました。
+
+## 主な変更内容
+
+- TODO: 変更内容を記載してください
+
+## テスト計画
+
+- [ ] TODO: テスト項目を記載してください
+
+## バージョンラベル
+
+変更内容に応じて適切なラベルを付与してください：
+- `version:major` - 破壊的変更
+- `version:minor` - 新機能追加
+- `version:patch` - バグ修正（ユーザーに影響あり）
+- ラベルなし - 内部改善（ユーザーに影響なし）
+EOFBODY
+)"
+          else
+            gh pr create \
+              --base "$BASE_BRANCH" \
+              --head "$BRANCH_NAME" \
+              --title "$TITLE" \
+              --body "$(cat <<'EOFBODY'
+## 概要
+
+このPRは hotfix ブランチから自動作成されました。
+
+## 修正内容
+
+- TODO: 修正内容を記載してください
+
+## 影響範囲
+
+- TODO: 影響範囲を記載してください
+
+## テスト計画
+
+- [ ] TODO: テスト項目を記載してください
+
+## 注意事項
+
+⚠️ このPRはmainブランチへの直接マージです。慎重にレビューしてください。
+
+## バージョンラベル
+
+通常は `version:patch` を付与してください。
+EOFBODY
+)"
+          fi
+
+          echo "PR created successfully"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### 🚀 Auto PR Creation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.check_pr.outputs.exists }}" == "true" ]; then
+            echo "ℹ️ **PR Already Exists**: #${{ steps.check_pr.outputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **PR Created**: ${{ github.ref_name }} → ${{ steps.target.outputs.base }}" >> $GITHUB_STEP_SUMMARY
+          fi
