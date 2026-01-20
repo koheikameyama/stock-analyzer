@@ -84,13 +84,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                             {/* このサービスについてボタン（常に表示） */}
                             <button
                                 onClick={() => setIsAboutModalOpen(true)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-surface-100 hover:bg-surface-200 text-surface-700 hover:text-surface-900 border border-surface-200"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-surface-100 hover:bg-surface-200 text-surface-700 hover:text-surface-900 border border-surface-200 lg:px-3 px-2"
                                 aria-label="このサービスについて"
                             >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                <span className="hidden lg:inline">このサービスについて</span>
+                                <span className="hidden lg:inline whitespace-nowrap">このサービスについて</span>
                             </button>
 
                             {/* モバイルハンバーガーメニュー */}
