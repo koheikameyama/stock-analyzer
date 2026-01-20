@@ -1,0 +1,35 @@
+name: Daily Deploy to Railway
+
+on:
+  # 毎日UTC 17:00（日本時間 2:00）に自動実行
+  schedule:
+    - cron: '0 17 * * *'
+
+  # 手動実行も可能
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway up --service edc96582-ae82-460d-babb-086eecd15167
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ デプロイ成功: $(date)"
+          else
+            echo "❌ デプロイ失敗: $(date)"
+          fi
