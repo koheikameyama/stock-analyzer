@@ -188,6 +188,26 @@ jobs:
           echo -e "$RELEASE_NOTES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      - name: Merge deploy PR
+        if: steps.check_changes.outputs.has_changes == 'true' && steps.version_check.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          # デプロイPR（develop→main）を取得
+          DEPLOY_PR=$(gh pr list --head develop --base main --state open --json number --jq '.[0].number')
+
+          if [ -z "$DEPLOY_PR" ] || [ "$DEPLOY_PR" = "null" ]; then
+            echo "❌ エラー: デプロイPRが見つかりません"
+            exit 1
+          fi
+
+          echo "デプロイPR #$DEPLOY_PR をマージします"
+
+          # PRをマージ
+          gh pr merge $DEPLOY_PR --merge
+
+          echo "✅ デプロイPR #$DEPLOY_PR をマージしました"
+
       - name: Checkout main branch
         if: steps.check_changes.outputs.has_changes == 'true' && steps.version_check.outputs.should_release == 'true'
         uses: actions/checkout@v4
@@ -222,6 +242,7 @@ jobs:
           fi
 
           if [ "${{ steps.version_check.outputs.should_release }}" == "true" ]; then
+            echo "✅ **Deploy PR Merged**: develop → main" >> $GITHUB_STEP_SUMMARY
             echo "📦 **Release Created**: ${{ steps.new_version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
             echo "- **Type**: ${{ steps.version_check.outputs.bump_type }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -230,4 +251,5 @@ jobs:
           else
             echo "ℹ️ **No Release**: No version labels found in deploy PR" >> $GITHUB_STEP_SUMMARY
             echo "- PRは作成されていますが、version:*ラベルが付いていないため、リリースは作成されませんでした" >> $GITHUB_STEP_SUMMARY
+            echo "- デプロイPRはマージされません" >> $GITHUB_STEP_SUMMARY
           fi
