@@ -119,10 +119,7 @@ export async function GET(request: NextRequest) {
       isAiAnalysisTarget: stock.isAiAnalysisTarget,
       marketCap: stock.marketCap,
       latestAnalysis: stock.analyses[0] || null,
-<<<<<<< HEAD
       requestCount: stock.analysisRequest?.requestCount || 0,
-=======
->>>>>>> develop
       createdAt: stock.createdAt,
       updatedAt: stock.updatedAt,
     }));
