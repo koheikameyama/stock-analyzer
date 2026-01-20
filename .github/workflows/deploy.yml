@@ -1,4 +1,4 @@
-name: Daily Merge and Release
+name: Daily Release
 
 on:
   # 毎日UTC 11:00（日本時間 20:00）に自動実行
@@ -9,12 +9,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  merge-and-release:
+  create-release:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write  # リリース作成、タグ作成、PRマージに必要
-      pull-requests: write  # PR作成に必要
+      contents: write  # リリース作成、タグ作成に必要
+      pull-requests: read  # PR情報の読み取りに必要
 
     steps:
       - name: Check branch
@@ -69,47 +69,56 @@ jobs:
             echo "Found $DIFF_COUNT commits in develop"
           fi
 
-      - name: Collect merged PRs and determine version bump
+      - name: Get info from existing deploy PR
         if: steps.check_changes.outputs.has_changes == 'true'
         id: version_check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # mainとdevelopの差分からマージコミットを取得
-          MERGE_COMMITS=$(git log origin/main..develop --merges --pretty=format:"%H %s" | grep "Merge pull request" || true)
+          # create-deploy-pr.ymlが作成したdevelop→mainのPRを取得
+          DEPLOY_PR=$(gh pr list --head develop --base main --state open --json number,body --jq '.[0]')
 
-          if [ -z "$MERGE_COMMITS" ]; then
-            echo "No PRs merged since last deployment"
+          if [ -z "$DEPLOY_PR" ] || [ "$DEPLOY_PR" = "null" ]; then
+            echo "No deploy PR found"
             echo "should_release=false" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          echo "Merged PRs since last deployment:"
-          echo "$MERGE_COMMITS"
+          DEPLOY_PR_NUMBER=$(echo "$DEPLOY_PR" | jq -r '.number')
+          DEPLOY_PR_BODY=$(echo "$DEPLOY_PR" | jq -r '.body')
 
-          # PRナンバーを抽出してラベルを取得
+          echo "Found deploy PR #$DEPLOY_PR_NUMBER"
+
+          # PR本文から「含まれる変更」セクションを抽出
+          PR_LIST=$(echo "$DEPLOY_PR_BODY" | awk '
+            /^### 含まれる変更/ {flag=1; next}
+            /^### / {flag=0}
+            flag && /^- / {print}
+          ')
+
+          if [ -z "$PR_LIST" ]; then
+            echo "No changes found in deploy PR"
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "PR List from deploy PR:"
+          echo "$PR_LIST"
+
+          # PRリストからバージョンラベルを検出
           HAS_MAJOR=false
           HAS_MINOR=false
           HAS_PATCH=false
-          PR_LIST=""
 
-          while read -r commit_hash commit_msg; do
-            PR_NUMBER=$(echo "$commit_msg" | grep -oP '#\K\d+' || true)
-            if [ -n "$PR_NUMBER" ]; then
-              echo "Checking PR #$PR_NUMBER..."
-              LABELS=$(gh pr view $PR_NUMBER --json labels --jq '.labels[].name' || true)
-
-              if echo "$LABELS" | grep -q "version:major"; then
-                HAS_MAJOR=true
-              elif echo "$LABELS" | grep -q "version:minor"; then
-                HAS_MINOR=true
-              elif echo "$LABELS" | grep -q "version:patch"; then
-                HAS_PATCH=true
-              fi
-
-              PR_LIST="$PR_LIST #$PR_NUMBER"
-            fi
-          done <<< "$MERGE_COMMITS"
+          if echo "$PR_LIST" | grep -q "\[major\]"; then
+            HAS_MAJOR=true
+          fi
+          if echo "$PR_LIST" | grep -q "\[minor\]"; then
+            HAS_MINOR=true
+          fi
+          if echo "$PR_LIST" | grep -q "\[patch\]"; then
+            HAS_PATCH=true
+          fi
 
           # バージョンアップタイプを決定
           if [ "$HAS_MAJOR" = true ]; then
@@ -119,16 +128,17 @@ jobs:
           elif [ "$HAS_PATCH" = true ]; then
             BUMP_TYPE="patch"
           else
-            echo "No version labels found in merged PRs"
+            echo "No version labels found in PR list"
             echo "should_release=false" >> $GITHUB_OUTPUT
             exit 0
           fi
 
           echo "should_release=true" >> $GITHUB_OUTPUT
           echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
-          echo "pr_list=$PR_LIST" >> $GITHUB_OUTPUT
+          echo "pr_list<<EOF" >> $GITHUB_OUTPUT
+          echo "$PR_LIST" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           echo "Version bump type: $BUMP_TYPE"
-          echo "Related PRs: $PR_LIST"
 
       - name: Calculate new version
         if: steps.version_check.outputs.should_release == 'true'
@@ -167,91 +177,19 @@ jobs:
       - name: Create release notes
         if: steps.version_check.outputs.should_release == 'true'
         id: release_notes
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LAST_COMMIT="${{ steps.last_deploy.outputs.last_commit }}"
           PR_LIST="${{ steps.version_check.outputs.pr_list }}"
 
-          # リリースノート作成
-          RELEASE_NOTES="## 更新内容\n\n"
-
-          for PR_NUMBER in $PR_LIST; do
-            PR_NUMBER=${PR_NUMBER#\#}
-            PR_INFO=$(gh pr view $PR_NUMBER --json title,body,labels)
-            PR_TITLE=$(echo "$PR_INFO" | jq -r '.title')
-            PR_BODY=$(echo "$PR_INFO" | jq -r '.body')
-
-            # PR本文から「リリースノート（ユーザー向け）」セクションを抽出
-            USER_NOTES=$(echo "$PR_BODY" | awk '
-              /^## リリースノート（ユーザー向け）/ {flag=1; next}
-              /^## / {flag=0}
-              flag && /^[^<]/ {print}
-            ' | sed '/^$/d' | sed '/^-$/d')
-
-            if [ -n "$USER_NOTES" ]; then
-              RELEASE_NOTES="${RELEASE_NOTES}${USER_NOTES}\n"
-            else
-              RELEASE_NOTES="${RELEASE_NOTES}- ${PR_TITLE} (#${PR_NUMBER})\n"
-            fi
-          done
+          # PRリストをそのままリリースノートとして使用
+          RELEASE_NOTES="## 更新内容\n\n$PR_LIST"
 
           # 複数行の出力を正しく扱う
           echo "release_notes<<EOF" >> $GITHUB_OUTPUT
           echo -e "$RELEASE_NOTES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Create and merge PR from develop to main
-        if: steps.check_changes.outputs.has_changes == 'true'
-        id: merge_pr
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-          PR_LIST: ${{ steps.version_check.outputs.pr_list }}
-          SHOULD_RELEASE: ${{ steps.version_check.outputs.should_release }}
-          NEW_VERSION: ${{ steps.new_version.outputs.new_version }}
-          BUMP_TYPE: ${{ steps.version_check.outputs.bump_type }}
-        run: |
-          # develop → main のPRを作成
-          PR_TITLE="chore: Daily deployment $(date -u +%Y-%m-%d)"
-
-          if [ "$SHOULD_RELEASE" = "true" ]; then
-            VERSION_SECTION="### バージョン
-          - **Version**: $NEW_VERSION
-          - **Type**: $BUMP_TYPE"
-          else
-            VERSION_SECTION="### バージョン
-          - リリースなし（version:*ラベルなし）"
-          fi
-
-          PR_BODY="## 自動デプロイPR
-
-          このPRは毎日深夜2:00に自動作成されます。
-
-          ### 含まれる変更
-          $PR_LIST
-
-          $VERSION_SECTION
-
-          🤖 This PR is automatically generated by GitHub Actions"
-
-          PR_URL=$(gh pr create \
-            --base main \
-            --head develop \
-            --title "$PR_TITLE" \
-            --body "$PR_BODY")
-
-          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
-          echo "Created PR: $PR_URL"
-
-          # PRを自動マージ
-          PR_NUMBER=$(echo "$PR_URL" | grep -oP '\d+$')
-          gh pr merge $PR_NUMBER --merge --auto
-
-          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
-          echo "Merged PR #$PR_NUMBER"
-
       - name: Checkout main branch
-        if: steps.check_changes.outputs.has_changes == 'true'
+        if: steps.check_changes.outputs.has_changes == 'true' && steps.version_check.outputs.should_release == 'true'
         uses: actions/checkout@v4
         with:
           ref: main
@@ -275,25 +213,21 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          echo "### 🚀 Merge and Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Release Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ steps.check_changes.outputs.has_changes }}" == "false" ]; then
-            echo "ℹ️ **No Changes**: develop has no changes since last merge" >> $GITHUB_STEP_SUMMARY
+            echo "ℹ️ **No Changes**: develop has no changes since last deployment" >> $GITHUB_STEP_SUMMARY
             exit 0
           fi
-
-          if [ -n "${{ steps.merge_pr.outputs.pr_url }}" ]; then
-            echo "✅ **develop → main merged**: ${{ steps.merge_pr.outputs.pr_url }}" >> $GITHUB_STEP_SUMMARY
-            echo "- Railway will automatically deploy from main branch" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ steps.version_check.outputs.should_release }}" == "true" ]; then
             echo "📦 **Release Created**: ${{ steps.new_version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
             echo "- **Type**: ${{ steps.version_check.outputs.bump_type }}" >> $GITHUB_STEP_SUMMARY
-            echo "- **PRs**: ${{ steps.version_check.outputs.pr_list }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Included PRs" >> $GITHUB_STEP_SUMMARY
+            echo "${{ steps.version_check.outputs.pr_list }}" >> $GITHUB_STEP_SUMMARY
           else
-            echo "ℹ️ **No Release**: No version labels in merged PRs" >> $GITHUB_STEP_SUMMARY
+            echo "ℹ️ **No Release**: No version labels found in deploy PR" >> $GITHUB_STEP_SUMMARY
+            echo "- PRは作成されていますが、version:*ラベルが付いていないため、リリースは作成されませんでした" >> $GITHUB_STEP_SUMMARY
           fi

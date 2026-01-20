@@ -57,34 +57,56 @@ jobs:
       - name: Get merged PRs since last deployment
         if: steps.check_pr.outputs.needs_pr == 'true'
         id: get_prs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # mainとdevelopの差分からすべてのコミットを取得
-          ALL_COMMITS=$(git log origin/main..develop --pretty=format:"%s" || true)
+          # mainとdevelopの差分からマージコミットを取得
+          MERGE_COMMITS=$(git log origin/main..develop --merges --pretty=format:"%H %s" | grep "Merge pull request" || true)
 
-          if [ -z "$ALL_COMMITS" ]; then
+          if [ -z "$MERGE_COMMITS" ]; then
             echo "No commits found"
             echo "pr_list=" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # PRナンバーを抽出してリスト作成（重複除去）
+          # PRナンバーを抽出してラベルを取得（重複除去）
           PR_LIST=""
           PR_NUMBERS_SEEN=""
 
-          while IFS= read -r commit_msg; do
-            # コミットメッセージから (#123) 形式のPR番号を抽出
-            PR_NUMBER=$(echo "$commit_msg" | grep -oP '\(#\K\d+(?=\))' || true)
+          while read -r commit_hash commit_msg; do
+            # コミットメッセージから PR番号を抽出
+            PR_NUMBER=$(echo "$commit_msg" | grep -oP '#\K\d+' || true)
 
             if [ -n "$PR_NUMBER" ]; then
               # 重複チェック
               if ! echo "$PR_NUMBERS_SEEN" | grep -q "\b$PR_NUMBER\b"; then
                 PR_NUMBERS_SEEN="$PR_NUMBERS_SEEN $PR_NUMBER"
-                # (#123)を削除してタイトルを抽出
-                PR_TITLE=$(echo "$commit_msg" | sed 's/ (#[0-9]*)$//')
-                PR_LIST="${PR_LIST}- #${PR_NUMBER}: ${PR_TITLE}\n"
+
+                # PR情報を取得
+                PR_INFO=$(gh pr view $PR_NUMBER --json title,labels || true)
+                PR_TITLE=$(echo "$PR_INFO" | jq -r '.title')
+                LABELS=$(echo "$PR_INFO" | jq -r '.labels[].name')
+
+                # バージョンラベルを取得
+                VERSION_LABEL=""
+                if echo "$LABELS" | grep -q "version:major"; then
+                  VERSION_LABEL="[major]"
+                elif echo "$LABELS" | grep -q "version:minor"; then
+                  VERSION_LABEL="[minor]"
+                elif echo "$LABELS" | grep -q "version:patch"; then
+                  VERSION_LABEL="[patch]"
+                fi
+
+                # PRリストに追加（PRリンク + バージョンラベル）
+                PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
+                if [ -n "$VERSION_LABEL" ]; then
+                  PR_LIST="${PR_LIST}\n- $VERSION_LABEL [$PR_TITLE]($PR_URL)"
+                else
+                  PR_LIST="${PR_LIST}\n- [$PR_TITLE]($PR_URL)"
+                fi
               fi
             fi
-          done <<< "$ALL_COMMITS"
+          done <<< "$MERGE_COMMITS"
 
           if [ -z "$PR_LIST" ]; then
             echo "No PR numbers found in commits"
@@ -116,7 +138,7 @@ jobs:
           2. 問題なければマージ
           3. mainへのマージ後、Railwayが自動デプロイ
 
-          ⚠️ **注意**: このPRは参考用です。実際のデプロイは毎日深夜2:00の自動デプロイで行われます。
+          ⚠️ **注意**: このPRは参考用です。実際のデプロイは毎日20:00の自動デプロイで行われます。
 
           ---
           _Last updated: $TIMESTAMP_"
