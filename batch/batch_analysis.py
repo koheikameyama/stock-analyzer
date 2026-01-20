@@ -658,7 +658,10 @@ def main():
     duration = (datetime.now() - start_time).total_seconds()
 
     print("\n" + "=" * 50)
-    print("✅ バッチジョブ完了")
+    if failure_count > 0:
+        print(f"⚠️  バッチジョブ完了（{failure_count}件失敗）")
+    else:
+        print("✅ バッチジョブ完了")
     print(f"⏱️  処理時間: {duration:.2f}秒")
     print("📊 結果サマリー:")
     print(f"   - 対象銘柄数: {len(stocks)}")
@@ -668,6 +671,10 @@ def main():
 
     # OpenAI API費用サマリーを表示
     usage_tracker.print_summary()
+
+    # 失敗があった場合は終了コード1を返す
+    if failure_count > 0:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
