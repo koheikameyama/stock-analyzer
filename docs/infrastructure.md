@@ -79,17 +79,20 @@ OpenAI API (GPT-4o)
 ### Webアプリ
 
 ```
-1. GitHub mainブランチにpush
-2. Railwayが自動検知
+1. 毎日UTC 17:00（日本時間 2:00）にGitHub Actions実行
+2. Railway CLIで`railway up`実行
 3. ビルド実行 (next build)
 4. デプロイ
 5. Cloudflare経由で配信
 ```
 
+**注意**: Railwayの自動デプロイは無効化されており、GitHub Actionsのみがデプロイを実行します。
+緊急時には手動で`workflow_dispatch`を実行してデプロイ可能です。
+
 ### バッチ処理
 
 ```
-1. GitHub Actions (cron: 0 9 * * *)
+1. 毎日UTC 9:00（日本時間 18:00）にGitHub Actions実行
 2. Pythonスクリプト実行
 3. OpenAI APIで分析
 4. Railway PostgreSQLに保存
@@ -114,6 +117,7 @@ VAPID_SUBJECT=https://www.stock-analyzer.jp
 DATABASE_URL=postgresql://postgres:PASSWORD@ballast.proxy.rlwy.net:35578/railway
 OPENAI_API_KEY=sk-...
 API_BASE_URL=https://www.stock-analyzer.jp
+RAILWAY_TOKEN=<Railway Project Token>
 ```
 
 ## Railway設定
@@ -243,6 +247,7 @@ cd web && npm start
 
 ## 更新履歴
 
+- 2026-01-20: GitHub Actionsによる1日1回デプロイ方式に変更（コスト最適化）
 - 2026-01-20: Vercel→Railway移行、Cloudflare DNS導入
 - 2026-01-19: Railway Cron検討→GitHub Actionsに戻す
 - 2026-01-19: AI分析対象フィルタリング機能追加
