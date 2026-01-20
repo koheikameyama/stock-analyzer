@@ -105,20 +105,51 @@ jobs:
           echo "PR List from deploy PR:"
           echo "$PR_LIST"
 
-          # PRリストからバージョンラベルを検出
+          # PRリストからバージョンラベル付きPRのみを抽出してユーザー向け説明を取得
           HAS_MAJOR=false
           HAS_MINOR=false
           HAS_PATCH=false
+          USER_FACING_CHANGES=""
 
-          if echo "$PR_LIST" | grep -q "\[major\]"; then
-            HAS_MAJOR=true
-          fi
-          if echo "$PR_LIST" | grep -q "\[minor\]"; then
-            HAS_MINOR=true
-          fi
-          if echo "$PR_LIST" | grep -q "\[patch\]"; then
-            HAS_PATCH=true
-          fi
+          while IFS= read -r line; do
+            # 行が空の場合はスキップ
+            [ -z "$line" ] && continue
+
+            # バージョンラベルをチェック
+            if echo "$line" | grep -q "\[major\]"; then
+              HAS_MAJOR=true
+              LABEL_TYPE="major"
+            elif echo "$line" | grep -q "\[minor\]"; then
+              HAS_MINOR=true
+              LABEL_TYPE="minor"
+            elif echo "$line" | grep -q "\[patch\]"; then
+              HAS_PATCH=true
+              LABEL_TYPE="patch"
+            else
+              # バージョンラベルがない行はスキップ
+              continue
+            fi
+
+            # PR番号を抽出（リンク形式から）
+            PR_NUMBER=$(echo "$line" | grep -oP 'pull/\K\d+' | head -1)
+
+            if [ -n "$PR_NUMBER" ]; then
+              echo "Fetching user-facing description from PR #$PR_NUMBER"
+              # PRの本文から「ユーザー向け説明」セクションを取得
+              PR_BODY=$(gh pr view $PR_NUMBER --json body --jq '.body')
+              USER_DESC=$(echo "$PR_BODY" | awk '
+                /^## ユーザー向け説明/ {flag=1; next}
+                /^## / {flag=0}
+                flag && NF {print; found=1}
+                END {if (!found) print ""}
+              ' | head -1)
+
+              # ユーザー向け説明がある場合のみ追加
+              if [ -n "$USER_DESC" ]; then
+                USER_FACING_CHANGES="${USER_FACING_CHANGES}- ${USER_DESC}\n"
+              fi
+            fi
+          done <<< "$PR_LIST"
 
           # バージョンアップタイプを決定
           if [ "$HAS_MAJOR" = true ]; then
@@ -133,10 +164,17 @@ jobs:
             exit 0
           fi
 
+          # ユーザー向け変更がない場合はリリースを作成しない
+          if [ -z "$USER_FACING_CHANGES" ]; then
+            echo "No user-facing changes found"
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           echo "should_release=true" >> $GITHUB_OUTPUT
           echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
-          echo "pr_list<<EOF" >> $GITHUB_OUTPUT
-          echo "$PR_LIST" >> $GITHUB_OUTPUT
+          echo "user_facing_changes<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$USER_FACING_CHANGES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           echo "Version bump type: $BUMP_TYPE"
 
@@ -178,10 +216,10 @@ jobs:
         if: steps.version_check.outputs.should_release == 'true'
         id: release_notes
         run: |
-          PR_LIST="${{ steps.version_check.outputs.pr_list }}"
+          USER_FACING_CHANGES="${{ steps.version_check.outputs.user_facing_changes }}"
 
-          # PRリストをそのままリリースノートとして使用
-          RELEASE_NOTES="## 更新内容\n\n$PR_LIST"
+          # ユーザー向け変更のみをリリースノートとして使用
+          RELEASE_NOTES="## 更新内容\n\n$USER_FACING_CHANGES"
 
           # 複数行の出力を正しく扱う
           echo "release_notes<<EOF" >> $GITHUB_OUTPUT
@@ -248,8 +286,8 @@ jobs:
             echo "📦 **Release Created**: ${{ steps.new_version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
             echo "- **Type**: ${{ steps.version_check.outputs.bump_type }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Included PRs" >> $GITHUB_STEP_SUMMARY
-            echo "${{ steps.version_check.outputs.pr_list }}" >> $GITHUB_STEP_SUMMARY
+            echo "### User-Facing Changes" >> $GITHUB_STEP_SUMMARY
+            echo "${{ steps.version_check.outputs.user_facing_changes }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "ℹ️ **No Release Created**: No version labels found in deploy PR" >> $GITHUB_STEP_SUMMARY
             echo "- デプロイPRはマージされましたが、version:*ラベルが付いていないため、リリースは作成されませんでした" >> $GITHUB_STEP_SUMMARY
