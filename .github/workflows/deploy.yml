@@ -1,9 +1,9 @@
 name: Daily Merge and Release
 
 on:
-  # 毎日UTC 17:00（日本時間 2:00）に自動実行
+  # 毎日UTC 11:00（日本時間 20:00）に自動実行
   schedule:
-    - cron: '0 17 * * *'
+    - cron: '0 11 * * *'
 
   # 手動実行も可能
   workflow_dispatch:
