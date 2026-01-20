@@ -68,3 +68,93 @@ jobs:
           path: |
             *.log
           retention-days: 7
+
+      - name: Notify success to Slack
+        if: success()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_DAILY_ANALYSIS_WEBHOOK_URL }}
+        run: |
+          TIMESTAMP=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S JST')
+          WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          MESSAGE="{
+            \"text\": \"✅ Daily Stock Analysis 成功\",
+            \"blocks\": [
+              {
+                \"type\": \"header\",
+                \"text\": {
+                  \"type\": \"plain_text\",
+                  \"text\": \"✅ Daily Stock Analysis 成功\"
+                }
+              },
+              {
+                \"type\": \"section\",
+                \"fields\": [
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*実行時刻:*\n${TIMESTAMP}\"
+                  },
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*ブランチ:*\n\`${{ github.ref_name }}\`\"
+                  }
+                ]
+              },
+              {
+                \"type\": \"section\",
+                \"text\": {
+                  \"type\": \"mrkdwn\",
+                  \"text\": \"<${WORKFLOW_URL}|ワークフロー実行ログを見る>\"
+                }
+              }
+            ]
+          }"
+
+          curl -X POST -H 'Content-type: application/json' \
+            --data "$MESSAGE" \
+            "$SLACK_WEBHOOK_URL"
+
+      - name: Notify failure to Slack
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_DAILY_ANALYSIS_WEBHOOK_URL }}
+        run: |
+          TIMESTAMP=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S JST')
+          WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          MESSAGE="{
+            \"text\": \"❌ Daily Stock Analysis 失敗\",
+            \"blocks\": [
+              {
+                \"type\": \"header\",
+                \"text\": {
+                  \"type\": \"plain_text\",
+                  \"text\": \"❌ Daily Stock Analysis 失敗\"
+                }
+              },
+              {
+                \"type\": \"section\",
+                \"fields\": [
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*実行時刻:*\n${TIMESTAMP}\"
+                  },
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*ブランチ:*\n\`${{ github.ref_name }}\`\"
+                  }
+                ]
+              },
+              {
+                \"type\": \"section\",
+                \"text\": {
+                  \"type\": \"mrkdwn\",
+                  \"text\": \"<!channel> エラーが発生しました。<${WORKFLOW_URL}|ワークフロー実行ログ>を確認してください。\"
+                }
+              }
+            ]
+          }"
+
+          curl -X POST -H 'Content-type: application/json' \
+            --data "$MESSAGE" \
+            "$SLACK_WEBHOOK_URL"
