@@ -17,6 +17,17 @@ jobs:
       pull-requests: write  # PR作成に必要
 
     steps:
+      - name: Check branch
+        run: |
+          # 手動実行の場合、developブランチからのみ実行可能
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ "${{ github.ref }}" != "refs/heads/develop" ]; then
+              echo "❌ エラー: このワークフローはdevelopブランチからのみ実行できます"
+              echo "現在のブランチ: ${{ github.ref }}"
+              exit 1
+            fi
+          fi
+
       - name: Checkout develop branch
         uses: actions/checkout@v4
         with:
