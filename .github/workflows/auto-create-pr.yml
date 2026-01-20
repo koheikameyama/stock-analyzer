@@ -63,10 +63,9 @@ jobs:
           # ブランチ名からタイトルを生成
           TITLE=$(echo "$BRANCH_NAME" | sed 's|^[^/]*/||' | sed 's|-| |g' | sed 's/\b\(.\)/\u\1/g')
 
-          # PR本文をファイルに書き出し
+          # PR本文を生成
           if [ "$BRANCH_TYPE" = "feature" ]; then
-            cat > /tmp/pr_body.md <<'EOF'
-## 概要
+            PR_BODY="## 概要
 
 このPRは feature ブランチから自動作成されました。
 
@@ -81,14 +80,12 @@ jobs:
 ## バージョンラベル
 
 変更内容に応じて適切なラベルを付与してください：
-- `version:major` - 破壊的変更
-- `version:minor` - 新機能追加
-- `version:patch` - バグ修正（ユーザーに影響あり）
-- ラベルなし - 内部改善（ユーザーに影響なし）
-EOF
+- \`version:major\` - 破壊的変更
+- \`version:minor\` - 新機能追加
+- \`version:patch\` - バグ修正（ユーザーに影響あり）
+- ラベルなし - 内部改善（ユーザーに影響なし）"
           else
-            cat > /tmp/pr_body.md <<'EOF'
-## 概要
+            PR_BODY="## 概要
 
 このPRは hotfix ブランチから自動作成されました。
 
@@ -110,9 +107,11 @@ EOF
 
 ## バージョンラベル
 
-通常は `version:patch` を付与してください。
-EOF
+通常は \`version:patch\` を付与してください。"
           fi
+
+          # ファイルに書き出し
+          echo "$PR_BODY" > /tmp/pr_body.md
 
           # PRを作成
           gh pr create \
