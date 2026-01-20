@@ -60,10 +60,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # mainとdevelopの差分からマージコミットを取得
-          MERGE_COMMITS=$(git log origin/main..develop --merges --pretty=format:"%H %s" | grep "Merge pull request" || true)
+          # mainとdevelopの差分から全てのコミットを取得
+          ALL_COMMITS=$(git log origin/main..develop --pretty=format:"%H %s")
 
-          if [ -z "$MERGE_COMMITS" ]; then
+          if [ -z "$ALL_COMMITS" ]; then
             echo "No commits found"
             echo "pr_list=" >> $GITHUB_OUTPUT
             echo "highest_version=" >> $GITHUB_OUTPUT
@@ -77,8 +77,8 @@ jobs:
           VERSION_PRIORITY=0  # 0=none, 1=patch, 2=minor, 3=major
 
           while read -r commit_hash commit_msg; do
-            # コミットメッセージから PR番号を抽出
-            PR_NUMBER=$(echo "$commit_msg" | grep -oP '#\K\d+' || true)
+            # コミットメッセージから PR番号を抽出（(#123) または Merge pull request #123 の形式）
+            PR_NUMBER=$(echo "$commit_msg" | grep -oP '(?:\(#|\s#)\K\d+' | head -1 || true)
 
             if [ -n "$PR_NUMBER" ]; then
               # 重複チェック
@@ -125,7 +125,7 @@ jobs:
                 fi
               fi
             fi
-          done <<< "$MERGE_COMMITS"
+          done <<< "$ALL_COMMITS"
 
           if [ -z "$PR_LIST" ]; then
             echo "No PR numbers found in commits"
