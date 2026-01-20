@@ -135,18 +135,21 @@ jobs:
 
             if [ -n "$PR_NUMBER" ]; then
               echo "Fetching user-facing description from PR #$PR_NUMBER"
-              # PRの本文から「ユーザー向け説明」セクションを取得
+              # PRの本文から「ユーザー向け説明」セクションを取得（複数行対応）
               PR_BODY=$(gh pr view $PR_NUMBER --json body --jq '.body')
               USER_DESC=$(echo "$PR_BODY" | awk '
                 /^## ユーザー向け説明/ {flag=1; next}
                 /^## / {flag=0}
-                flag && NF {print; found=1}
-                END {if (!found) print ""}
-              ' | head -1)
+                flag && NF {print}
+              ')
 
-              # ユーザー向け説明がある場合のみ追加
+              # ユーザー向け説明がある場合のみ追加（複数行の場合も対応）
               if [ -n "$USER_DESC" ]; then
-                USER_FACING_CHANGES="${USER_FACING_CHANGES}- ${USER_DESC}\n"
+                while IFS= read -r line; do
+                  if [ -n "$line" ]; then
+                    USER_FACING_CHANGES="${USER_FACING_CHANGES}- ${line}\n"
+                  fi
+                done <<< "$USER_DESC"
               fi
             fi
           done <<< "$PR_LIST"
