@@ -38,13 +38,14 @@ jobs:
       - name: Check existing PR
         if: steps.check_pr.outputs.needs_pr == 'true'
         id: existing_pr
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 既存のdevelop→mainのPRがあるか確認
-          EXISTING_PR=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number' || echo "")
+          # REST APIで既存のdevelop→mainのPRを確認（GraphQLエラー回避）
+          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&head=${{ github.repository_owner }}:develop&base=main")
 
-          if [ -n "$EXISTING_PR" ]; then
+          EXISTING_PR=$(echo "$RESPONSE" | jq -r '.[0].number // ""')
+
+          if [ -n "$EXISTING_PR" ] && [ "$EXISTING_PR" != "null" ]; then
             echo "has_pr=true" >> $GITHUB_OUTPUT
             echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
             echo "Existing PR found: #$EXISTING_PR"
@@ -56,8 +57,6 @@ jobs:
       - name: Get merged PRs since last deployment
         if: steps.check_pr.outputs.needs_pr == 'true'
         id: get_prs
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # mainとdevelopの差分からマージコミットを取得
           MERGE_COMMITS=$(git log origin/main..develop --merges --pretty=format:"%H %s" | grep "Merge pull request" || true)
@@ -86,7 +85,6 @@ jobs:
       - name: Create or update PR to main
         if: steps.check_pr.outputs.needs_pr == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
           PR_NUMBER: ${{ steps.existing_pr.outputs.pr_number }}
           HAS_PR: ${{ steps.existing_pr.outputs.has_pr }}
           PR_LIST: ${{ steps.get_prs.outputs.pr_list }}
@@ -111,17 +109,22 @@ jobs:
           _Last updated: $TIMESTAMP_"
 
           if [ "$HAS_PR" = "true" ]; then
-            # 既存PRを更新
-            gh pr edit $PR_NUMBER --body "$PR_BODY"
+            # 既存PRを更新（REST API使用）
+            curl -s -X PATCH \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" \
+              -d "{\"body\":$(echo "$PR_BODY" | jq -Rs .)}"
             echo "Updated existing PR #$PR_NUMBER"
           else
-            # 新規PR作成
+            # 新規PR作成（REST API使用）
             PR_TITLE="chore: Ready to deploy $(date -u +%Y-%m-%d)"
-            PR_URL=$(gh pr create \
-              --base main \
-              --head develop \
-              --title "$PR_TITLE" \
-              --body "$PR_BODY")
+            RESPONSE=$(curl -s -X POST \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls" \
+              -d "{\"title\":$(echo "$PR_TITLE" | jq -Rs .),\"body\":$(echo "$PR_BODY" | jq -Rs .),\"head\":\"develop\",\"base\":\"main\"}")
+            PR_URL=$(echo "$RESPONSE" | jq -r '.html_url')
             echo "Created new PR: $PR_URL"
           fi
 
