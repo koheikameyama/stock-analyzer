@@ -83,6 +83,9 @@ npm run install:all
 # または個別に
 npm run web:install      # Web依存関係
 npm run batch:install    # Python依存関係
+
+# Git hooksの有効化（初回のみ）
+cd web && npm run prepare
 ```
 
 ### 4. 環境変数の設定
@@ -230,16 +233,61 @@ python3 batch_analysis.py
 
 詳細は [ブランチ運用戦略](./docs/branch_strategy.md) を参照してください。
 
-1. featureブランチを作成
-2. 変更をコミット
-3. プルリクエストを作成（適切な`version:*`ラベルを付与）
-4. mainにマージ → 自動的にリリース作成
+#### ブランチ構成
+
+```
+main (本番・デプロイ済みコードのみ)
+  ↑ 毎日深夜2:00に自動マージ
+  |
+develop (開発・デフォルトブランチ)
+  ├── feature/* (新機能)
+  ├── fix/* (バグ修正)
+  └── hotfix/* (緊急修正)
+```
+
+#### 開発手順
+
+1. **developから最新を取得**
+   ```bash
+   git checkout develop
+   git pull origin develop
+   ```
+
+2. **featureブランチを作成**
+   ```bash
+   git checkout -b feature/新機能名
+   ```
+
+3. **変更をコミット**
+   ```bash
+   git add .
+   git commit -m "feat: 新機能を追加"
+   git push origin feature/新機能名
+   ```
+
+4. **PRを作成**
+   - GitHubでPRを作成（**base: develop**）
+   - 適切なバージョンラベルを付与：
+     - `version:major` - 破壊的変更
+     - `version:minor` - 新機能追加
+     - `version:patch` - バグ修正
+     - ラベルなし - リリース不要（内部改善）
+
+5. **developにマージ**
+   - セルフレビュー後、developにマージ
+
+6. **自動デプロイ**
+   - 毎日深夜2:00に`develop → main`が自動マージ
+   - version:*ラベルがあれば自動的にGitHub Release作成
+   - mainにpush → Railwayが自動デプロイ
+   - 緊急時は手動でワークフロー実行可能
 
 ### コード規約
 
 - ESLint設定に従う
 - コミットメッセージは明確に
 - セマンティックバージョニングに従う
+- **PRは必ずdevelopに向けて作成**（mainではない）
 
 ## ⚠️ 免責事項
 

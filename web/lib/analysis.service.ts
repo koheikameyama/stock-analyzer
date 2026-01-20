@@ -372,6 +372,7 @@ export class AnalysisService {
 
   /**
    * 最新の分析結果を取得（各銘柄につき最新1件のみ・日本株のみ）
+   * N+1問題を回避するため、全データを一度に取得してメモリ上で処理
    * @param recommendation 推奨フィルター（Buy/Sell/Hold、オプション）
    * @returns 分析結果の配列
    *
@@ -382,7 +383,7 @@ export class AnalysisService {
   static async getLatestAnalyses(
     recommendation?: 'Buy' | 'Sell' | 'Hold'
   ) {
-    // 最適化: 1つのクエリで全ての分析結果を取得（N+1問題を回避）
+    // 1. 全分析データを一度に取得（recommendationフィルタ適用）
     const allAnalyses = await prisma.analysis.findMany({
       where: {
         stock: { market: 'JP' },
@@ -401,7 +402,7 @@ export class AnalysisService {
       orderBy: { analysisDate: 'desc' },
     });
 
-    // 各銘柄の最新の分析のみを抽出
+    // 2. メモリ上で各銘柄の最新分析のみを抽出
     const latestByStock = new Map<string, typeof allAnalyses[0]>();
     for (const analysis of allAnalyses) {
       if (!latestByStock.has(analysis.stockId)) {
@@ -409,7 +410,7 @@ export class AnalysisService {
       }
     }
 
-    // confidenceScoreでソートして返す
+    // 3. confidenceScoreでソートして返す
     return Array.from(latestByStock.values())
       .sort((a, b) => b.confidenceScore - a.confidenceScore);
   }

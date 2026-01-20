@@ -5,7 +5,7 @@
   "description": "AI株式分析ツール - Webアプリケーションとバッチ処理",
   "scripts": {
     "dev": "cd web && npm run dev",
-    "build": "cd web && npm run build",
+    "build": "cd web && npm run build:cloudflare",
     "start": "cd web && npm run start",
     "lint": "cd web && npm run lint",
     "db:generate": "npx prisma generate",
@@ -30,6 +30,10 @@
   },
   "dependencies": {
     "@prisma/client": "^6.2.0",
+    "normalize-path": "^3.0.0",
     "web-push": "^3.6.7"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

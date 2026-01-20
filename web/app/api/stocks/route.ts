@@ -84,7 +84,10 @@ export async function GET(request: NextRequest) {
           orderBy: { analysisDate: 'desc' },
           take: 1, // 最新の分析結果のみ
         },
+<<<<<<< HEAD
         analysisRequest: true, // リクエスト情報を含める
+=======
+>>>>>>> develop
       },
       skip,
       take: limit,
@@ -119,7 +122,10 @@ export async function GET(request: NextRequest) {
       isAiAnalysisTarget: stock.isAiAnalysisTarget,
       marketCap: stock.marketCap,
       latestAnalysis: stock.analyses[0] || null,
+<<<<<<< HEAD
       requestCount: stock.analysisRequest?.requestCount || 0,
+=======
+>>>>>>> develop
       createdAt: stock.createdAt,
       updatedAt: stock.updatedAt,
     }));

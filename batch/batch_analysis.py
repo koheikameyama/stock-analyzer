@@ -9,7 +9,7 @@ import sys
 import time
 import uuid
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, Dict, Any, List
 from collections import deque
@@ -391,6 +391,7 @@ def save_analysis_to_db(conn, stock_id: str, stock_data: StockData, analysis: Di
 
     except Exception as e:
         conn.rollback()
+        print(f"❌ DB保存エラー: {str(e)}")
         return False
 
 
@@ -452,6 +453,7 @@ def save_price_history_to_db(conn, stock_id: str, stock_data: StockData) -> bool
 
     except Exception as e:
         conn.rollback()
+        print(f"❌ DB保存エラー: {str(e)}")
         return False
 
 
@@ -612,13 +614,18 @@ def main():
         conn = psycopg2.connect(DATABASE_URL)
         print("✅ データベース接続成功\n")
 
-        # 銘柄リストを取得
+        # 銘柄リストを取得（is_ai_analysis_target=trueのみ）
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute('SELECT id, ticker, market FROM stocks ORDER BY ticker')
+            cur.execute('''
+                SELECT id, ticker, market
+                FROM stocks
+                WHERE is_ai_analysis_target = true
+                ORDER BY ticker
+            ''')
             stocks = cur.fetchall()
 
         total_stocks = len(stocks)
-        print(f"📋 対象銘柄数: {total_stocks}件\n")
+        print(f"📋 分析対象銘柄数: {total_stocks}件\n")
 
         if total_stocks == 0:
             print("⚠️ 分析対象の銘柄が見つかりませんでした")
@@ -657,7 +664,10 @@ def main():
     duration = (datetime.now() - start_time).total_seconds()
 
     print("\n" + "=" * 50)
-    print("✅ バッチジョブ完了")
+    if failure_count > 0:
+        print(f"⚠️  バッチジョブ完了（{failure_count}件失敗）")
+    else:
+        print("✅ バッチジョブ完了")
     print(f"⏱️  処理時間: {duration:.2f}秒")
     print("📊 結果サマリー:")
     print(f"   - 対象銘柄数: {len(stocks)}")
@@ -667,6 +677,10 @@ def main():
 
     # OpenAI API費用サマリーを表示
     usage_tracker.print_summary()
+
+    # 失敗があった場合は終了コード1を返す
+    if failure_count > 0:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

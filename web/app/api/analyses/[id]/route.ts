@@ -9,6 +9,9 @@ import { AnalysisService } from '@/lib/analysis.service';
 // SQLiteを使用するためNode.jsランタイムを指定
 export const runtime = 'nodejs';
 
+// 動的ルートとして扱う（ビルド時の静的生成をスキップ）
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

@@ -4,9 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",
-    "build": "npx prisma migrate deploy --schema=../prisma/schema.prisma && npx prisma generate --schema=../prisma/schema.prisma && next build",
+    "build": "npx prisma generate --schema=../prisma/schema.prisma && next build",
+    "build:cloudflare": "npm run build && npx opennextjs-cloudflare build",
+    "postinstall": "npx prisma generate --schema=../prisma/schema.prisma",
     "start": "next start",
     "lint": "next lint",
+    "deploy": "npx opennextjs-cloudflare deploy",
+    "migrate-data": "npx tsx ../data-migration/import.ts",
+    "prepare": "husky",
     "db:sync": "bash scripts/sync_production_to_local.sh"
   },
   "dependencies": {
@@ -26,16 +31,35 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.14.9",
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.20",
     "eslint": "^9",
     "eslint-config-next": "^15.1.6",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "postcss": "^8.4.49",
+    "prettier": "^3.8.0",
     "prisma": "^6.2.0",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "wrangler": "^4.59.2"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ],
+    "../batch/**/*.py": [
+      "black",
+      "flake8"
+    ]
   }
 }

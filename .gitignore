@@ -53,6 +53,10 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 
+# OpenNext Cloudflare
+.open-next/
+.dev.vars
+
 # PWA
 **/public/sw.js
 **/public/workbox-*.js
@@ -71,3 +75,4 @@ next-env.d.ts
 !package.json
 !package-lock.json
 !tsconfig.json
+!prisma/seed-data/*.json

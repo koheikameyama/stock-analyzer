@@ -86,7 +86,7 @@ export default function RootLayout({
         <Providers>{children}</Providers>
         <InstallPrompt />
         <ReleaseNoteModal />
-        <PushNotificationPromptModal />
+        {/* <PushNotificationPromptModal /> */}
       </body>
     </html>
   );

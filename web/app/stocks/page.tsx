@@ -10,9 +10,13 @@ import { StockListTable } from '@/components/StockListTable';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { AnalysisDetailModal } from '@/components/AnalysisDetailModal';
 import { AdBanner } from '@/components/AdBanner';
+<<<<<<< HEAD
 import { Toast, useToast } from '@/components/Toast';
 import { useStocks, useSectors } from '@/hooks/useStocks';
 import { addRequestedStock, isStockRequested } from '@/lib/cookies';
+=======
+import { useStocks, useSectors } from '@/hooks/useStocks';
+>>>>>>> develop
 
 export default function StocksPage() {
   const [page, setPage] = useState(1);
@@ -23,11 +27,14 @@ export default function StocksPage() {
     null
   );
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+<<<<<<< HEAD
   const [isRequesting, setIsRequesting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Toast管理
   const { toasts, showToast, removeToast } = useToast();
+=======
+>>>>>>> develop
 
   // データ取得
   const { data, isLoading, error } = useStocks({
@@ -71,6 +78,7 @@ export default function StocksPage() {
     setSelectedTicker(null);
   };
 
+<<<<<<< HEAD
   // 分析リクエスト処理
   const handleRequestAnalysis = async (stock: any) => {
     // 既にリクエスト済みかチェック
@@ -117,6 +125,8 @@ export default function StocksPage() {
     }
   };
 
+=======
+>>>>>>> develop
   return (
     <Layout>
       <div className="space-y-8">
@@ -246,10 +256,15 @@ export default function StocksPage() {
 
             {/* テーブル表示 */}
             <StockListTable
+<<<<<<< HEAD
               key={refreshKey}
               stocks={stocks}
               onStockClick={handleStockClick}
               onRequestAnalysis={handleRequestAnalysis}
+=======
+              stocks={stocks}
+              onStockClick={handleStockClick}
+>>>>>>> develop
             />
 
             {/* 広告エリア2: テーブル後 */}
@@ -269,7 +284,11 @@ export default function StocksPage() {
                   disabled={!pagination.hasPrevPage}
                   className="px-4 py-2 border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
+<<<<<<< HEAD
                   <span className="hidden md:inline">← </span>前へ
+=======
+                  ← 前へ
+>>>>>>> develop
                 </button>
                 <div className="flex items-center gap-1">
                   {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
@@ -306,7 +325,11 @@ export default function StocksPage() {
                   disabled={!pagination.hasNextPage}
                   className="px-4 py-2 border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
+<<<<<<< HEAD
                   次へ<span className="hidden md:inline"> →</span>
+=======
+                  次へ →
+>>>>>>> develop
                 </button>
               </div>
             )}
@@ -319,6 +342,7 @@ export default function StocksPage() {
           ticker={selectedTicker}
           onClose={handleModalClose}
         />
+<<<<<<< HEAD
 
         {/* Toast通知 */}
         {toasts.map((toast) => (
@@ -329,6 +353,8 @@ export default function StocksPage() {
             onClose={() => removeToast(toast.id)}
           />
         ))}
+=======
+>>>>>>> develop
       </div>
     </Layout>
   );
