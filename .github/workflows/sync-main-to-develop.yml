@@ -63,9 +63,9 @@ jobs:
 
           echo "Created sync PR: $PR_URL"
 
-          # PRを自動マージ
+          # PRをマージ
           PR_NUMBER=$(echo "$PR_URL" | grep -oP '\d+$')
-          gh pr merge $PR_NUMBER --merge --auto
+          gh pr merge $PR_NUMBER --merge
 
           echo "Merged PR #$PR_NUMBER"
 
