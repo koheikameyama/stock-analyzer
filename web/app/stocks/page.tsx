@@ -9,6 +9,7 @@ import { Layout } from '@/components/Layout';
 import { StockListTable } from '@/components/StockListTable';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { AnalysisDetailModal } from '@/components/AnalysisDetailModal';
+import { DonationModal } from '@/components/DonationModal';
 import { Toast, useToast } from '@/components/Toast';
 import { useStocks, useSectors } from '@/hooks/useStocks';
 import { addRequestedStock, isStockRequested } from '@/lib/cookies';
@@ -24,6 +25,7 @@ export default function StocksPage() {
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [isRequesting, setIsRequesting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
 
   // Toast管理
   const { toasts, showToast, removeToast } = useToast();
@@ -108,6 +110,9 @@ export default function StocksPage() {
         `${stock.name}(${stock.ticker})の分析をリクエストしました！`,
         'success'
       );
+
+      // 寄付モーダルを表示
+      setIsDonationModalOpen(true);
     } catch (error) {
       console.error('分析リクエストエラー:', error);
       showToast('リクエストに失敗しました。もう一度お試しください。', 'error');
@@ -301,6 +306,12 @@ export default function StocksPage() {
           analysisId={selectedAnalysisId}
           ticker={selectedTicker}
           onClose={handleModalClose}
+        />
+
+        {/* 寄付モーダル */}
+        <DonationModal
+          isOpen={isDonationModalOpen}
+          onClose={() => setIsDonationModalOpen(false)}
         />
 
         {/* Toast通知 */}
