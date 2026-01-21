@@ -188,30 +188,17 @@ jobs:
           echo "✅ GitHub Release created: $NEW_VERSION"
 
       - name: Sync main to develop
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
-          # main→developの同期PRを作成
-          SYNC_PR=$(gh pr list --head main --base develop --state open --json number --jq '.[0].number')
+          # mainをdevelopに直接マージ
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          if [ -n "$SYNC_PR" ] && [ "$SYNC_PR" != "null" ]; then
-            echo "Sync PR #$SYNC_PR already exists, merging..."
-            gh pr merge $SYNC_PR --merge
-          else
-            echo "Creating sync PR: main → develop"
-            gh pr create \
-              --base develop \
-              --head main \
-              --title "chore: Sync main to develop" \
-              --body "Automatic sync from main to develop after deployment"
+          git fetch origin develop
+          git checkout develop
+          git merge origin/main -m "chore: Sync main to develop after deployment"
+          git push origin develop
 
-            # 作成したPRを即座にマージ
-            NEW_SYNC_PR=$(gh pr list --head main --base develop --state open --json number --jq '.[0].number')
-            if [ -n "$NEW_SYNC_PR" ] && [ "$NEW_SYNC_PR" != "null" ]; then
-              gh pr merge $NEW_SYNC_PR --merge
-              echo "✅ Synced main to develop via PR #$NEW_SYNC_PR"
-            fi
-          fi
+          echo "✅ Synced main to develop"
 
       - name: Summary
         if: always()
