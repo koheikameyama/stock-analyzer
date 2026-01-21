@@ -16,7 +16,6 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const pathname = usePathname();
     return (
         <div className="min-h-screen bg-gradient-to-br from-surface-50 via-blue-50/30 to-indigo-50/30 flex flex-col">
@@ -42,29 +41,27 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                             </div>
                         </Link>
                         <div className="flex items-center gap-2">
-                            {/* デスクトップナビゲーション */}
-                            <nav className="hidden lg:flex items-center gap-2">
-                                <Link
-                                    href="/settings"
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-surface-200 ${
-                                        pathname === '/settings'
-                                            ? 'bg-primary-600 text-white border-primary-600'
-                                            : 'bg-surface-100 hover:bg-surface-200 text-surface-700 hover:text-surface-900'
-                                    }`}
-                                    aria-label="設定"
-                                >
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    <span className="hidden lg:inline">設定</span>
-                                </Link>
-                            </nav>
+                            {/* 設定ボタン */}
+                            <Link
+                                href="/settings"
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-surface-200 ${
+                                    pathname === '/settings'
+                                        ? 'bg-primary-600 text-white border-primary-600'
+                                        : 'bg-surface-100 hover:bg-surface-200 text-surface-700 hover:text-surface-900'
+                                }`}
+                                aria-label="設定"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span className="hidden sm:inline">設定</span>
+                            </Link>
 
-                            {/* このサービスについてボタン（常に表示） */}
+                            {/* このサービスについてボタン */}
                             <button
                                 onClick={() => setIsAboutModalOpen(true)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-surface-100 hover:bg-surface-200 text-surface-700 hover:text-surface-900 border border-surface-200 lg:px-3 px-2"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-surface-100 hover:bg-surface-200 text-surface-700 hover:text-surface-900 border border-surface-200"
                                 aria-label="このサービスについて"
                             >
                                 <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -72,49 +69,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                                 </svg>
                                 <span className="hidden lg:inline whitespace-nowrap">このサービスについて</span>
                             </button>
-
-                            {/* モバイルハンバーガーメニュー */}
-                            <button
-                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                                className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg hover:bg-surface-100 transition-colors"
-                                aria-label="メニュー"
-                            >
-                                {isMobileMenuOpen ? (
-                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                ) : (
-                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                                    </svg>
-                                )}
-                            </button>
                         </div>
                     </div>
                 </div>
-
-                {/* モバイルメニュー展開 */}
-                {isMobileMenuOpen && (
-                    <div className="lg:hidden border-t border-surface-200 bg-white">
-                        <nav className="max-w-7xl mx-auto px-4 py-4 space-y-2">
-                            <Link
-                                href="/settings"
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                                    pathname === '/settings'
-                                        ? 'bg-primary-600 text-white'
-                                        : 'hover:bg-surface-100 text-surface-700'
-                                }`}
-                            >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                <span>設定</span>
-                            </Link>
-                        </nav>
-                    </div>
-                )}
             </header>
 
             {/* ページタブ（AI分析 / 銘柄を探す） */}
