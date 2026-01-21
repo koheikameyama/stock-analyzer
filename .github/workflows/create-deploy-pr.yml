@@ -39,7 +39,7 @@ jobs:
         if: steps.check_pr.outputs.needs_pr == 'true'
         id: existing_pr
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           # 既存のdevelop→mainのPRがあるか確認
           EXISTING_PR=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number' || echo "")
