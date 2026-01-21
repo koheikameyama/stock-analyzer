@@ -30,7 +30,7 @@ export const Analytics = () => {
     `;
     document.head.appendChild(gaInlineScript);
 
-    // Google AdSense
+    // Google AdSense (自動広告)
     const adsenseScript = document.createElement('script');
     adsenseScript.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7558679080857597';
     adsenseScript.async = true;
