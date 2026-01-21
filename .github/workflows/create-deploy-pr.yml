@@ -57,7 +57,7 @@ jobs:
         if: steps.check_pr.outputs.needs_pr == 'true'
         id: get_prs
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           # mainとdevelopの差分からマージコミットを取得
           MERGE_COMMITS=$(git log origin/main..develop --merges --pretty=format:"%H %s" | grep "Merge pull request" || true)
