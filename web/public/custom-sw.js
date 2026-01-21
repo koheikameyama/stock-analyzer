@@ -3,13 +3,6 @@
  * push通知専用の軽量なService Worker
  */
 
-// next-pwaが生成したsw.jsがあれば読み込む（本番環境のみ）
-try {
-  importScripts('/sw.js');
-} catch (e) {
-  console.log('[Custom SW] sw.js not found, using standalone mode');
-}
-
 // プッシュ通知を受信したときの処理
 self.addEventListener('push', function(event) {
   console.log('[Custom SW] Push notification received:', event);

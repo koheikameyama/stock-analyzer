@@ -142,6 +142,7 @@ jobs:
       - name: Create or update PR to main
         if: steps.check_pr.outputs.needs_pr == 'true'
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.existing_pr.outputs.pr_number }}
           HAS_PR: ${{ steps.existing_pr.outputs.has_pr }}
           PR_LIST: ${{ steps.get_prs.outputs.pr_list }}
@@ -149,42 +150,40 @@ jobs:
         run: |
           TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
 
-          PR_BODY="## デプロイ準備完了
-
-          developブランチの変更をmainにマージする準備ができました。
-
-          ### 含まれる変更
-          $PR_LIST
-
-          ### 次のステップ
-          1. このPRの内容を確認
-          2. 問題なければマージ
-          3. mainへのマージ後、Railwayが自動デプロイ
-
-          ⚠️ **注意**: このPRは参考用です。実際のデプロイは毎日20:00の自動デプロイで行われます。
-
-          ---
-          _Last updated: $TIMESTAMP_"
+          # PR本文をファイルに保存
+          {
+            echo "## デプロイ準備完了"
+            echo ""
+            echo "developブランチの変更をmainにマージする準備ができました。"
+            echo ""
+            echo "### 含まれる変更"
+            echo -e "$PR_LIST"
+            echo ""
+            echo "### 次のステップ"
+            echo "1. このPRの内容を確認"
+            echo "2. 問題なければマージ"
+            echo "3. mainへのマージ後、Railwayが自動デプロイ"
+            echo ""
+            echo "注意: このPRは参考用です。実際のデプロイは毎日20:00の自動デプロイで行われます。"
+            echo ""
+            echo "---"
+            echo "_Last updated: $TIMESTAMP_"
+          } > /tmp/pr_body.txt
 
           if [ "$HAS_PR" = "true" ]; then
-            # 既存PRを更新（REST API使用）
-            curl -s -X PATCH \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" \
-              -d "{\"body\":$(echo "$PR_BODY" | jq -Rs .)}"
+            # 既存PRを更新
+            gh pr edit $PR_NUMBER --body-file /tmp/pr_body.txt
             echo "Updated existing PR #$PR_NUMBER"
             DEPLOY_PR_NUMBER=$PR_NUMBER
           else
-            # 新規PR作成（REST API使用）
+            # 新規PR作成
             PR_TITLE="chore: Ready to deploy $(date -u +%Y-%m-%d)"
-            RESPONSE=$(curl -s -X POST \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/${{ github.repository }}/pulls" \
-              -d "{\"title\":$(echo "$PR_TITLE" | jq -Rs .),\"body\":$(echo "$PR_BODY" | jq -Rs .),\"head\":\"develop\",\"base\":\"main\"}")
-            PR_URL=$(echo "$RESPONSE" | jq -r '.html_url')
-            DEPLOY_PR_NUMBER=$(echo "$RESPONSE" | jq -r '.number')
+            PR_URL=$(gh pr create \
+              --base main \
+              --head develop \
+              --title "$PR_TITLE" \
+              --body-file /tmp/pr_body.txt)
+            DEPLOY_PR_NUMBER=$(echo "$PR_URL" | grep -oP '\d+$')
             echo "Created new PR: $PR_URL"
           fi
 
@@ -193,24 +192,12 @@ jobs:
             echo "Adding label $HIGHEST_VERSION to PR #$DEPLOY_PR_NUMBER"
 
             # 既存のバージョンラベルを削除
-            EXISTING_LABELS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/issues/$DEPLOY_PR_NUMBER/labels" | jq -r '.[].name')
-
-            for label in $EXISTING_LABELS; do
-              if [[ "$label" == version:* ]]; then
-                curl -s -X DELETE \
-                  -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                  "https://api.github.com/repos/${{ github.repository }}/issues/$DEPLOY_PR_NUMBER/labels/$(echo $label | jq -Rs . | tr -d '"')"
-                echo "Removed old label: $label"
-              fi
-            done
+            gh pr edit $DEPLOY_PR_NUMBER --remove-label "version:major" 2>/dev/null || true
+            gh pr edit $DEPLOY_PR_NUMBER --remove-label "version:minor" 2>/dev/null || true
+            gh pr edit $DEPLOY_PR_NUMBER --remove-label "version:patch" 2>/dev/null || true
 
             # 新しいバージョンラベルを追加
-            curl -s -X POST \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/${{ github.repository }}/issues/$DEPLOY_PR_NUMBER/labels" \
-              -d "{\"labels\":[\"$HIGHEST_VERSION\"]}"
+            gh pr edit $DEPLOY_PR_NUMBER --add-label "$HIGHEST_VERSION"
             echo "Added label: $HIGHEST_VERSION"
           fi
 

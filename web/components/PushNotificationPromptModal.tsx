@@ -1,6 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import {
+  isServiceWorkerSupported,
+  registerServiceWorker,
+  urlBase64ToUint8Array,
+} from '@/lib/serviceWorker';
 
 /**
  * プッシュ通知許可を促すモーダル
@@ -13,7 +18,7 @@ export const PushNotificationPromptModal: React.FC = () => {
   useEffect(() => {
     const checkAndShowPrompt = async () => {
       // プッシュ通知がサポートされているか確認
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      if (!isServiceWorkerSupported()) {
         return;
       }
 
@@ -44,54 +49,14 @@ export const PushNotificationPromptModal: React.FC = () => {
   }, []);
 
   /**
-   * Base64文字列をUint8Arrayに変換
-   */
-  const urlBase64ToUint8Array = (base64String: string): ArrayBuffer => {
-    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding)
-      .replace(/\-/g, '+')
-      .replace(/_/g, '/');
-
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray.buffer;
-  };
-
-  /**
-   * タイムアウト付きPromise
-   */
-  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
-      )
-    ]);
-  };
-
-  /**
    * プッシュ通知を有効にする
    */
   const handleEnable = async () => {
     setIsLoading(true);
 
     try {
-      // Service Workerを登録（10秒タイムアウト）
-      const registration = await withTimeout(
-        navigator.serviceWorker.register('/custom-sw.js', { scope: '/' }),
-        10000,
-        'Service Workerの登録がタイムアウトしました'
-      );
-
-      await withTimeout(
-        navigator.serviceWorker.ready,
-        10000,
-        'Service Workerの準備がタイムアウトしました'
-      );
+      // Service Workerを登録
+      const registration = await registerServiceWorker();
 
       // 通知の許可をリクエスト
       const permission = await Notification.requestPermission();
@@ -108,28 +73,20 @@ export const PushNotificationPromptModal: React.FC = () => {
         throw new Error('VAPID公開鍵が設定されていません');
       }
 
-      // プッシュ通知を購読（30秒タイムアウト）
-      const subscription = await withTimeout(
-        registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-        }),
-        30000,
-        'プッシュ通知の購読がタイムアウトしました'
-      );
+      // プッシュ通知を購読
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      });
 
-      // サーバーに購読情報を送信（10秒タイムアウト）
-      const response = await withTimeout(
-        fetch('/api/push-notifications/subscribe', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(subscription.toJSON()),
-        }),
-        10000,
-        'サーバーへの送信がタイムアウトしました'
-      );
+      // サーバーに購読情報を送信
+      const response = await fetch('/api/push-notifications/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(subscription.toJSON()),
+      });
 
       if (!response.ok) {
         const errorData = await response.json();

@@ -1,9 +1,10 @@
-name: Daily Release
+name: Deploy and Release
 
 on:
-  # 毎日UTC 11:00（日本時間 20:00）に自動実行
-  schedule:
-    - cron: '0 11 * * *'
+  # mainブランチへのpush（PRマージ）時に実行
+  push:
+    branches:
+      - main
 
   # 手動実行も可能
   workflow_dispatch:
@@ -14,80 +15,47 @@ jobs:
 
     permissions:
       contents: write  # リリース作成、タグ作成に必要
-      pull-requests: read  # PR情報の読み取りに必要
+      pull-requests: write  # PR作成・マージに必要
 
     steps:
-      - name: Check branch
-        run: |
-          # 手動実行の場合、developブランチからのみ実行可能
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            if [ "${{ github.ref }}" != "refs/heads/develop" ]; then
-              echo "❌ エラー: このワークフローはdevelopブランチからのみ実行できます"
-              echo "現在のブランチ: ${{ github.ref }}"
-              exit 1
-            fi
-          fi
-
-      - name: Checkout develop branch
+      - name: Checkout main branch
         uses: actions/checkout@v4
         with:
-          ref: develop
+          ref: main
           fetch-depth: 0  # 全履歴を取得（タグとコミット履歴取得のため）
 
-      - name: Get last deployment tag
-        id: last_deploy
-        run: |
-          # 最新のデプロイタグを取得（存在しない場合は最初のコミット）
-          LAST_DEPLOY_TAG=$(git tag -l "deploy-*" --sort=-version:refname | head -n 1)
-
-          if [ -z "$LAST_DEPLOY_TAG" ]; then
-            # 初回デプロイの場合、最初のコミットから
-            LAST_COMMIT=$(git rev-list --max-parents=0 HEAD)
-            echo "last_commit=$LAST_COMMIT" >> $GITHUB_OUTPUT
-            echo "is_first_deploy=true" >> $GITHUB_OUTPUT
-          else
-            LAST_COMMIT=$(git rev-list -n 1 $LAST_DEPLOY_TAG)
-            echo "last_commit=$LAST_COMMIT" >> $GITHUB_OUTPUT
-            echo "last_deploy_tag=$LAST_DEPLOY_TAG" >> $GITHUB_OUTPUT
-            echo "is_first_deploy=false" >> $GITHUB_OUTPUT
-          fi
-
-          echo "Last deployment commit: $LAST_COMMIT"
-
-      - name: Check if develop has changes
-        id: check_changes
-        run: |
-          # developとmainの差分を確認
-          git fetch origin main
-          DIFF_COUNT=$(git rev-list --count origin/main..develop)
-
-          if [ "$DIFF_COUNT" -eq 0 ]; then
-            echo "No changes in develop since last deployment"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "Found $DIFF_COUNT commits in develop"
-          fi
-
-      - name: Get info from existing deploy PR
-        if: steps.check_changes.outputs.has_changes == 'true'
+      - name: Get merged deploy PR info
         id: version_check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # create-deploy-pr.ymlが作成したdevelop→mainのPRを取得
-          DEPLOY_PR=$(gh pr list --head develop --base main --state open --json number,body --jq '.[0]')
+          # 最新のマージコミットからPR番号を取得
+          MERGE_COMMIT_MSG=$(git log -1 --pretty=%B)
+          PR_NUMBER=$(echo "$MERGE_COMMIT_MSG" | grep -oP '#\K\d+' | head -1)
 
-          if [ -z "$DEPLOY_PR" ] || [ "$DEPLOY_PR" = "null" ]; then
-            echo "No deploy PR found"
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No PR number found in merge commit"
             echo "should_release=false" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          DEPLOY_PR_NUMBER=$(echo "$DEPLOY_PR" | jq -r '.number')
+          echo "Found merged PR #$PR_NUMBER"
+
+          # マージされたPRの情報を取得
+          DEPLOY_PR=$(gh pr view $PR_NUMBER --json body,baseRefName,headRefName --jq '.')
+          BASE_BRANCH=$(echo "$DEPLOY_PR" | jq -r '.baseRefName')
+          HEAD_BRANCH=$(echo "$DEPLOY_PR" | jq -r '.headRefName')
+
+          # develop→mainのPRでない場合はスキップ
+          if [ "$BASE_BRANCH" != "main" ] || [ "$HEAD_BRANCH" != "develop" ]; then
+            echo "Not a deploy PR (develop→main)"
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           DEPLOY_PR_BODY=$(echo "$DEPLOY_PR" | jq -r '.body')
 
-          echo "Found deploy PR #$DEPLOY_PR_NUMBER"
+          echo "Found deploy PR #$PR_NUMBER"
 
           # PR本文から「含まれる変更」セクションを抽出
           PR_LIST=$(echo "$DEPLOY_PR_BODY" | awk '
@@ -105,20 +73,28 @@ jobs:
           echo "PR List from deploy PR:"
           echo "$PR_LIST"
 
-          # PRリストからバージョンラベルを検出
+          # PRリストからバージョンラベルをチェック
           HAS_MAJOR=false
           HAS_MINOR=false
           HAS_PATCH=false
+          VERSION_LABELED_PRS=""
 
-          if echo "$PR_LIST" | grep -q "\[major\]"; then
-            HAS_MAJOR=true
-          fi
-          if echo "$PR_LIST" | grep -q "\[minor\]"; then
-            HAS_MINOR=true
-          fi
-          if echo "$PR_LIST" | grep -q "\[patch\]"; then
-            HAS_PATCH=true
-          fi
+          while IFS= read -r line; do
+            # 行が空の場合はスキップ
+            [ -z "$line" ] && continue
+
+            # バージョンラベルをチェック
+            if echo "$line" | grep -q "\[major\]"; then
+              HAS_MAJOR=true
+              VERSION_LABELED_PRS="${VERSION_LABELED_PRS}${line}\n"
+            elif echo "$line" | grep -q "\[minor\]"; then
+              HAS_MINOR=true
+              VERSION_LABELED_PRS="${VERSION_LABELED_PRS}${line}\n"
+            elif echo "$line" | grep -q "\[patch\]"; then
+              HAS_PATCH=true
+              VERSION_LABELED_PRS="${VERSION_LABELED_PRS}${line}\n"
+            fi
+          done <<< "$PR_LIST"
 
           # バージョンアップタイプを決定
           if [ "$HAS_MAJOR" = true ]; then
@@ -133,10 +109,17 @@ jobs:
             exit 0
           fi
 
+          # バージョンラベル付きPRがない場合はリリースを作成しない
+          if [ -z "$VERSION_LABELED_PRS" ]; then
+            echo "No version labeled PRs found"
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           echo "should_release=true" >> $GITHUB_OUTPUT
           echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
-          echo "pr_list<<EOF" >> $GITHUB_OUTPUT
-          echo "$PR_LIST" >> $GITHUB_OUTPUT
+          echo "version_labeled_prs<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$VERSION_LABELED_PRS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           echo "Version bump type: $BUMP_TYPE"
 
@@ -174,29 +157,76 @@ jobs:
           echo "New version: $NEW_VERSION"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
+      - name: Generate user-facing descriptions with AI
+        if: steps.version_check.outputs.should_release == 'true'
+        id: ai_descriptions
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          VERSION_LABELED_PRS="${{ steps.version_check.outputs.version_labeled_prs }}"
+
+          # プロンプトをファイルに保存
+          {
+            echo "以下はソフトウェアのPRタイトルのリストです。これらをもとに、ユーザー向けの華やかで分かりやすい説明を生成してください。"
+            echo ""
+            echo "要件:"
+            echo "- 各PRの内容を理解し、ユーザーにとってのメリットを説明"
+            echo "- 絵文字を積極的に使用"
+            echo "- 各説明は1行で簡潔に"
+            echo "- 3から5個の箇条書きにまとめる"
+            echo "- 語尾は「しました」「できます」などを使用"
+            echo "- バージョンラベルは出力に含めない"
+            echo ""
+            echo "出力形式（プレーンテキスト、箇条書きマーク不要）:"
+            echo "機能Aを追加しました"
+            echo "機能Bが使いやすくなりました"
+            echo "パフォーマンスが向上しました"
+            echo ""
+            echo "PRリスト:"
+            echo "$VERSION_LABELED_PRS"
+          } > /tmp/ai_prompt.txt
+
+          # OpenAI APIで説明を生成
+          PROMPT_CONTENT=$(cat /tmp/ai_prompt.txt | jq -Rs .)
+
+          RESPONSE=$(curl -s https://api.openai.com/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -d "{\"model\":\"gpt-4o-mini\",\"messages\":[{\"role\":\"user\",\"content\":$PROMPT_CONTENT}],\"temperature\":0.7,\"max_tokens\":500}")
+
+          AI_DESCRIPTIONS=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
+
+          echo "AI Generated Descriptions:"
+          echo "$AI_DESCRIPTIONS"
+
+          echo "ai_descriptions<<EOF" >> $GITHUB_OUTPUT
+          echo "$AI_DESCRIPTIONS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Create release notes
         if: steps.version_check.outputs.should_release == 'true'
         id: release_notes
         run: |
-          PR_LIST="${{ steps.version_check.outputs.pr_list }}"
+          AI_DESCRIPTIONS="${{ steps.ai_descriptions.outputs.ai_descriptions }}"
 
-          # PRリストをそのままリリースノートとして使用
-          RELEASE_NOTES="## 更新内容\n\n$PR_LIST"
+          # AI生成の説明を箇条書きに変換
+          USER_FACING_CHANGES=""
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              USER_FACING_CHANGES="${USER_FACING_CHANGES}- ${line}\n"
+            fi
+          done <<< "$AI_DESCRIPTIONS"
+
+          # リリースノートを作成
+          RELEASE_NOTES="## 更新内容\n\n$USER_FACING_CHANGES"
 
           # 複数行の出力を正しく扱う
           echo "release_notes<<EOF" >> $GITHUB_OUTPUT
           echo -e "$RELEASE_NOTES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Checkout main branch
-        if: steps.check_changes.outputs.has_changes == 'true' && steps.version_check.outputs.should_release == 'true'
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-
       - name: Create GitHub Release
-        if: steps.check_changes.outputs.has_changes == 'true' && steps.version_check.outputs.should_release == 'true'
+        if: steps.version_check.outputs.should_release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
@@ -210,24 +240,45 @@ jobs:
 
           echo "✅ GitHub Release created: $NEW_VERSION"
 
+      - name: Sync main to develop
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          # main→developの同期PRを作成
+          SYNC_PR=$(gh pr list --head main --base develop --state open --json number --jq '.[0].number')
+
+          if [ -n "$SYNC_PR" ] && [ "$SYNC_PR" != "null" ]; then
+            echo "Sync PR #$SYNC_PR already exists, merging..."
+            gh pr merge $SYNC_PR --merge
+          else
+            echo "Creating sync PR: main → develop"
+            gh pr create \
+              --base develop \
+              --head main \
+              --title "chore: Sync main to develop" \
+              --body "Automatic sync from main to develop after deployment"
+
+            # 作成したPRを即座にマージ
+            NEW_SYNC_PR=$(gh pr list --head main --base develop --state open --json number --jq '.[0].number')
+            if [ -n "$NEW_SYNC_PR" ] && [ "$NEW_SYNC_PR" != "null" ]; then
+              gh pr merge $NEW_SYNC_PR --merge
+              echo "✅ Synced main to develop via PR #$NEW_SYNC_PR"
+            fi
+          fi
+
       - name: Summary
         if: always()
         run: |
-          echo "### 🚀 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Deploy Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ "${{ steps.check_changes.outputs.has_changes }}" == "false" ]; then
-            echo "ℹ️ **No Changes**: develop has no changes since last deployment" >> $GITHUB_STEP_SUMMARY
-            exit 0
-          fi
-
           if [ "${{ steps.version_check.outputs.should_release }}" == "true" ]; then
+            echo "✅ **Deployed**: develop → main" >> $GITHUB_STEP_SUMMARY
             echo "📦 **Release Created**: ${{ steps.new_version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
             echo "- **Type**: ${{ steps.version_check.outputs.bump_type }}" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Included PRs" >> $GITHUB_STEP_SUMMARY
-            echo "${{ steps.version_check.outputs.pr_list }}" >> $GITHUB_STEP_SUMMARY
+            echo "🔄 **Synced**: main → develop" >> $GITHUB_STEP_SUMMARY
           else
-            echo "ℹ️ **No Release**: No version labels found in deploy PR" >> $GITHUB_STEP_SUMMARY
-            echo "- PRは作成されていますが、version:*ラベルが付いていないため、リリースは作成されませんでした" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Deployed**: develop → main (no release)" >> $GITHUB_STEP_SUMMARY
+            echo "ℹ️ version:*ラベルがないため、リリースは作成されませんでした" >> $GITHUB_STEP_SUMMARY
+            echo "🔄 **Synced**: main → develop" >> $GITHUB_STEP_SUMMARY
           fi
