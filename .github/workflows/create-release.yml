@@ -1,17 +1,20 @@
 name: Create Release
 
 on:
-  # Railway Webhookからトリガーされる
-  repository_dispatch:
-    types:
-      - railway-deploy-success
+  # Railwayデプロイ完了時に自動実行
+  deployment_status:
 
   # 手動実行も可能
   workflow_dispatch:
 
 jobs:
   create-release:
-    # Railway Webhookまたは手動実行時に実行
+    # デプロイ成功時のみ実行（production環境、成功ステータス）
+    if: |
+      (github.event_name == 'deployment_status' &&
+       github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'production') ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     permissions:
