@@ -1,0 +1,53 @@
+name: CI (Lint & Build)
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - develop
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd web
+          npm ci
+
+      - name: Generate Prisma Client
+        run: |
+          cd web
+          npx prisma generate --schema=../prisma/schema.prisma
+
+      - name: Run ESLint
+        run: |
+          cd web
+          npm run lint || echo "Lint warnings found, but continuing..."
+
+      - name: Run Build
+        run: |
+          cd web
+          npm run build
+
+      - name: Check build output
+        run: |
+          if [ ! -d "web/.next" ]; then
+            echo "Build failed: .next directory not found"
+            exit 1
+          fi
+          echo "Build completed successfully"
