@@ -1,12 +1,16 @@
 name: Create Deploy PR
 
 on:
-  push:
+  pull_request:
     branches:
       - develop
+    types:
+      - closed
 
 jobs:
   create-pr:
+    # PRがマージされた場合のみ実行（main→developの同期PRは除外）
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop' && github.event.pull_request.head.ref != 'main'
     runs-on: ubuntu-latest
 
     # GH_PATを使用するため、permissionsは空に設定（GITHUB_TOKENを無効化）
