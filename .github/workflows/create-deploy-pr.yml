@@ -38,13 +38,14 @@ jobs:
         if: steps.check_pr.outputs.needs_pr == 'true'
         id: existing_pr
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          # GITHUB_TOKENをunsetしてGH_PATを優先
-          unset GITHUB_TOKEN
+          # 既存のdevelop→mainのPRがあるか確認（GitHub REST API使用）
+          RESPONSE=$(curl -s -H "Authorization: token $GH_PAT" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&base=main&head=${{ github.repository_owner }}:develop")
 
-          # 既存のdevelop→mainのPRがあるか確認
-          EXISTING_PR=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number' || echo "")
+          EXISTING_PR=$(echo "$RESPONSE" | jq -r '.[0].number // empty')
 
           if [ -n "$EXISTING_PR" ]; then
             echo "has_pr=true" >> $GITHUB_OUTPUT
@@ -59,11 +60,8 @@ jobs:
         if: steps.check_pr.outputs.needs_pr == 'true'
         id: get_prs
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          # GITHUB_TOKENをunsetしてGH_PATを優先
-          unset GITHUB_TOKEN
-
           # mainとdevelopの差分からマージコミットを取得
           MERGE_COMMITS=$(git log origin/main..develop --merges --pretty=format:"%H %s" | grep "Merge pull request" || true)
 
@@ -78,8 +76,10 @@ jobs:
           while read -r commit_hash commit_msg; do
             PR_NUMBER=$(echo "$commit_msg" | grep -oP '#\K\d+' || true)
             if [ -n "$PR_NUMBER" ]; then
-              # タイトルとラベルを取得（エラー時は空のJSONを返す）
-              PR_INFO=$(gh pr view $PR_NUMBER --json title,labels 2>/dev/null || echo '{"title":"","labels":[]}')
+              # タイトルとラベルを取得（GitHub REST API使用）
+              PR_INFO=$(curl -s -H "Authorization: token $GH_PAT" \
+                -H "Accept: application/vnd.github.v3+json" \
+                "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" 2>/dev/null || echo '{"title":"","labels":[]}')
               PR_TITLE=$(echo "$PR_INFO" | jq -r '.title // ""')
 
               # タイトルが空の場合はコミットメッセージから抽出
@@ -104,14 +104,11 @@ jobs:
       - name: Create or update PR to main
         if: steps.check_pr.outputs.needs_pr == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_PAT: ${{ secrets.GH_PAT }}
           PR_NUMBER: ${{ steps.existing_pr.outputs.pr_number }}
           HAS_PR: ${{ steps.existing_pr.outputs.has_pr }}
           PR_LIST: ${{ steps.get_prs.outputs.pr_list }}
         run: |
-          # GITHUB_TOKENをunsetしてGH_PATを優先
-          unset GITHUB_TOKEN
-
           TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
 
           PR_BODY="## デプロイ準備完了
@@ -131,18 +128,29 @@ jobs:
           ---
           _Last updated: $TIMESTAMP_"
 
+          # JSON形式でボディをエスケープ
+          PR_BODY_JSON=$(echo "$PR_BODY" | jq -Rs .)
+
           if [ "$HAS_PR" = "true" ]; then
-            # 既存PRを更新
-            gh pr edit $PR_NUMBER --body "$PR_BODY"
+            # 既存PRを更新（GitHub REST API使用）
+            curl -s -X PATCH \
+              -H "Authorization: token $GH_PAT" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" \
+              -d "{\"body\": $PR_BODY_JSON}"
             echo "Updated existing PR #$PR_NUMBER"
           else
-            # 新規PR作成
+            # 新規PR作成（GitHub REST API使用）
             PR_TITLE="chore: Ready to deploy $(date -u +%Y-%m-%d)"
-            PR_URL=$(gh pr create \
-              --base main \
-              --head develop \
-              --title "$PR_TITLE" \
-              --body "$PR_BODY")
+            PR_TITLE_JSON=$(echo "$PR_TITLE" | jq -Rs .)
+
+            RESPONSE=$(curl -s -X POST \
+              -H "Authorization: token $GH_PAT" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls" \
+              -d "{\"title\": $PR_TITLE_JSON, \"body\": $PR_BODY_JSON, \"head\": \"develop\", \"base\": \"main\"}")
+
+            PR_URL=$(echo "$RESPONSE" | jq -r '.html_url')
             echo "Created new PR: $PR_URL"
           fi
 
