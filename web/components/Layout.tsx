@@ -45,26 +45,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                             {/* デスクトップナビゲーション */}
                             <nav className="hidden lg:flex items-center gap-2">
                                 <Link
-                                    href="/"
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                        pathname === '/'
-                                            ? 'bg-primary-600 text-white'
-                                            : 'hover:bg-surface-100 text-surface-700 hover:text-surface-900'
-                                    }`}
-                                >
-                                    <span>AI分析</span>
-                                </Link>
-                                <Link
-                                    href="/stocks"
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                        pathname === '/stocks'
-                                            ? 'bg-primary-600 text-white'
-                                            : 'hover:bg-surface-100 text-surface-700 hover:text-surface-900'
-                                    }`}
-                                >
-                                    <span>銘柄を探す</span>
-                                </Link>
-                                <Link
                                     href="/settings"
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-surface-200 ${
                                         pathname === '/settings'
@@ -118,28 +98,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <div className="lg:hidden border-t border-surface-200 bg-white">
                         <nav className="max-w-7xl mx-auto px-4 py-4 space-y-2">
                             <Link
-                                href="/"
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                                    pathname === '/'
-                                        ? 'bg-primary-600 text-white'
-                                        : 'hover:bg-surface-100 text-surface-700'
-                                }`}
-                            >
-                                <span>AI分析</span>
-                            </Link>
-                            <Link
-                                href="/stocks"
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                                    pathname === '/stocks'
-                                        ? 'bg-primary-600 text-white'
-                                        : 'hover:bg-surface-100 text-surface-700'
-                                }`}
-                            >
-                                <span>銘柄を探す</span>
-                            </Link>
-                            <Link
                                 href="/settings"
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
@@ -158,6 +116,44 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     </div>
                 )}
             </header>
+
+            {/* ページタブ（AI分析 / 銘柄を探す） */}
+            {(pathname === '/' || pathname === '/stocks') && (
+                <div className="bg-white border-b border-surface-200 sticky top-16 z-40">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <nav className="-mb-px flex justify-center gap-2" aria-label="Tabs">
+                            <Link
+                                href="/"
+                                className={`
+                                    flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors
+                                    ${
+                                        pathname === '/'
+                                            ? 'border-primary-600 text-primary-600'
+                                            : 'border-transparent text-surface-600 hover:text-surface-900 hover:border-surface-300'
+                                    }
+                                `}
+                            >
+                                <span className="text-base">💹</span>
+                                <span>AI分析</span>
+                            </Link>
+                            <Link
+                                href="/stocks"
+                                className={`
+                                    flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors
+                                    ${
+                                        pathname === '/stocks'
+                                            ? 'border-primary-600 text-primary-600'
+                                            : 'border-transparent text-surface-600 hover:text-surface-900 hover:border-surface-300'
+                                    }
+                                `}
+                            >
+                                <span className="text-base">🔍</span>
+                                <span>銘柄を探す</span>
+                            </Link>
+                        </nav>
+                    </div>
+                </div>
+            )}
 
             {/* メインコンテンツ */}
             <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
