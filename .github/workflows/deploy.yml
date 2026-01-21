@@ -57,42 +57,44 @@ jobs:
 
           echo "Found deploy PR #$PR_NUMBER"
 
-          # PR本文から「含まれる変更」セクションを抽出
+          # PR本文から「ユーザー向けの変更」セクションを抽出
+          USER_FACING_CHANGES=$(echo "$DEPLOY_PR_BODY" | awk '
+            /^### ユーザー向けの変更/ {flag=1; next}
+            /^### / {flag=0}
+            flag && /^[^#]/ && NF {print}
+          ')
+
+          # 「ユーザー向けの変更」セクションがない場合はリリースを作成しない
+          if [ -z "$USER_FACING_CHANGES" ]; then
+            echo "No user-facing changes found in deploy PR"
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "User-facing changes from deploy PR:"
+          echo "$USER_FACING_CHANGES"
+
+          # PR本文から「含まれる変更」セクションを抽出してバージョンラベルを判定
           PR_LIST=$(echo "$DEPLOY_PR_BODY" | awk '
             /^### 含まれる変更/ {flag=1; next}
             /^### / {flag=0}
             flag && /^- / {print}
           ')
 
-          if [ -z "$PR_LIST" ]; then
-            echo "No changes found in deploy PR"
-            echo "should_release=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          echo "PR List from deploy PR:"
-          echo "$PR_LIST"
-
-          # PRリストからバージョンラベルをチェック
+          # バージョンラベルをチェック
           HAS_MAJOR=false
           HAS_MINOR=false
           HAS_PATCH=false
-          VERSION_LABELED_PRS=""
 
           while IFS= read -r line; do
-            # 行が空の場合はスキップ
             [ -z "$line" ] && continue
 
-            # バージョンラベルをチェック
             if echo "$line" | grep -q "\[major\]"; then
               HAS_MAJOR=true
-              VERSION_LABELED_PRS="${VERSION_LABELED_PRS}${line}\n"
             elif echo "$line" | grep -q "\[minor\]"; then
               HAS_MINOR=true
-              VERSION_LABELED_PRS="${VERSION_LABELED_PRS}${line}\n"
             elif echo "$line" | grep -q "\[patch\]"; then
               HAS_PATCH=true
-              VERSION_LABELED_PRS="${VERSION_LABELED_PRS}${line}\n"
             fi
           done <<< "$PR_LIST"
 
@@ -109,17 +111,10 @@ jobs:
             exit 0
           fi
 
-          # バージョンラベル付きPRがない場合はリリースを作成しない
-          if [ -z "$VERSION_LABELED_PRS" ]; then
-            echo "No version labeled PRs found"
-            echo "should_release=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
           echo "should_release=true" >> $GITHUB_OUTPUT
           echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
-          echo "version_labeled_prs<<EOF" >> $GITHUB_OUTPUT
-          echo -e "$VERSION_LABELED_PRS" >> $GITHUB_OUTPUT
+          echo "user_facing_changes<<EOF" >> $GITHUB_OUTPUT
+          echo "$USER_FACING_CHANGES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           echo "Version bump type: $BUMP_TYPE"
 
@@ -157,68 +152,27 @@ jobs:
           echo "New version: $NEW_VERSION"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Generate user-facing descriptions with AI
-        if: steps.version_check.outputs.should_release == 'true'
-        id: ai_descriptions
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          VERSION_LABELED_PRS="${{ steps.version_check.outputs.version_labeled_prs }}"
-
-          # プロンプトをファイルに保存
-          {
-            echo "以下はソフトウェアのPRタイトルのリストです。これらをもとに、ユーザー向けの華やかで分かりやすい説明を生成してください。"
-            echo ""
-            echo "要件:"
-            echo "- 各PRの内容を理解し、ユーザーにとってのメリットを説明"
-            echo "- 絵文字を積極的に使用"
-            echo "- 各説明は1行で簡潔に"
-            echo "- 3から5個の箇条書きにまとめる"
-            echo "- 語尾は「しました」「できます」などを使用"
-            echo "- バージョンラベルは出力に含めない"
-            echo ""
-            echo "出力形式（プレーンテキスト、箇条書きマーク不要）:"
-            echo "機能Aを追加しました"
-            echo "機能Bが使いやすくなりました"
-            echo "パフォーマンスが向上しました"
-            echo ""
-            echo "PRリスト:"
-            echo "$VERSION_LABELED_PRS"
-          } > /tmp/ai_prompt.txt
-
-          # OpenAI APIで説明を生成
-          PROMPT_CONTENT=$(cat /tmp/ai_prompt.txt | jq -Rs .)
-
-          RESPONSE=$(curl -s https://api.openai.com/v1/chat/completions \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $OPENAI_API_KEY" \
-            -d "{\"model\":\"gpt-4o-mini\",\"messages\":[{\"role\":\"user\",\"content\":$PROMPT_CONTENT}],\"temperature\":0.7,\"max_tokens\":500}")
-
-          AI_DESCRIPTIONS=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
-
-          echo "AI Generated Descriptions:"
-          echo "$AI_DESCRIPTIONS"
-
-          echo "ai_descriptions<<EOF" >> $GITHUB_OUTPUT
-          echo "$AI_DESCRIPTIONS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
       - name: Create release notes
         if: steps.version_check.outputs.should_release == 'true'
         id: release_notes
         run: |
-          AI_DESCRIPTIONS="${{ steps.ai_descriptions.outputs.ai_descriptions }}"
+          USER_FACING_CHANGES="${{ steps.version_check.outputs.user_facing_changes }}"
 
-          # AI生成の説明を箇条書きに変換
-          USER_FACING_CHANGES=""
+          # ユーザー向けの変更を箇条書きに変換（既に箇条書きになっている場合はそのまま）
+          FORMATTED_CHANGES=""
           while IFS= read -r line; do
             if [ -n "$line" ]; then
-              USER_FACING_CHANGES="${USER_FACING_CHANGES}- ${line}\n"
+              # 既に「- 」で始まっている場合はそのまま、そうでない場合は追加
+              if echo "$line" | grep -q "^- "; then
+                FORMATTED_CHANGES="${FORMATTED_CHANGES}${line}\n"
+              else
+                FORMATTED_CHANGES="${FORMATTED_CHANGES}- ${line}\n"
+              fi
             fi
-          done <<< "$AI_DESCRIPTIONS"
+          done <<< "$USER_FACING_CHANGES"
 
           # リリースノートを作成
-          RELEASE_NOTES="## 更新内容\n\n$USER_FACING_CHANGES"
+          RELEASE_NOTES="## 更新内容\n\n$FORMATTED_CHANGES"
 
           # 複数行の出力を正しく扱う
           echo "release_notes<<EOF" >> $GITHUB_OUTPUT
