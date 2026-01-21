@@ -5,9 +5,21 @@ on:
     branches:
       - develop
     types: [opened, synchronize, reopened]
+    paths:
+      - 'web/**'
+      - 'prisma/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ci.yml'
   push:
     branches:
       - develop
+    paths:
+      - 'web/**'
+      - 'prisma/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ci.yml'
 
 jobs:
   lint-and-build:
