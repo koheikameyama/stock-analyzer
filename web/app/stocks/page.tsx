@@ -9,7 +9,6 @@ import { Layout } from '@/components/Layout';
 import { StockListTable } from '@/components/StockListTable';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { AnalysisDetailModal } from '@/components/AnalysisDetailModal';
-import { AdBanner } from '@/components/AdBanner';
 import { Toast, useToast } from '@/components/Toast';
 import { useStocks, useSectors } from '@/hooks/useStocks';
 import { addRequestedStock, isStockRequested } from '@/lib/cookies';
@@ -130,13 +129,6 @@ export default function StocksPage() {
           </p>
         </div>
 
-        {/* 広告エリア1: ヘッダー下 */}
-        <AdBanner
-          adSlot="7965940641"
-          adFormat="auto"
-          className="my-4"
-        />
-
         {/* フィルター */}
         <div className="bg-white p-6 rounded-xl border border-surface-200 shadow-sm">
           <form onSubmit={handleSearch} className="space-y-4">
@@ -251,15 +243,6 @@ export default function StocksPage() {
               onStockClick={handleStockClick}
               onRequestAnalysis={handleRequestAnalysis}
             />
-
-            {/* 広告エリア2: テーブル後 */}
-            {stocks.length > 0 && (
-              <AdBanner
-                adSlot="5999264618"
-                adFormat="auto"
-                className="my-6"
-              />
-            )}
 
             {/* ページネーション */}
             {pagination && pagination.totalPages > 1 && (

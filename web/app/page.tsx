@@ -10,7 +10,6 @@ import { FilterBar } from '@/components/FilterBar';
 import { AnalysisTable } from '@/components/AnalysisTable';
 import { AnalysisDetailModal } from '@/components/AnalysisDetailModal';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { AdBanner } from '@/components/AdBanner';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
 import { AnalysisTargetInfo } from '@/components/AnalysisTargetInfo';
 import { useLatestAnalyses, useBatchJobStatus } from '@/hooks/useAnalyses';
@@ -101,13 +100,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 広告エリア1: ヘッダー下 */}
-        <AdBanner
-          adSlot="7965940641"
-          adFormat="auto"
-          className="my-4"
-        />
-
         {/* AI分析対象銘柄の説明 */}
         <AnalysisTargetInfo />
 
@@ -155,15 +147,6 @@ export default function Home() {
                 <p className="text-surface-600 font-medium mb-1">分析結果が見つかりませんでした</p>
                 <p className="text-surface-400 text-sm">別の条件で検索してみてください</p>
               </div>
-            )}
-
-            {/* 広告エリア3: テーブル後 */}
-            {analyses.length > 0 && (
-              <AdBanner
-                adSlot="5999264618"
-                adFormat="auto"
-                className="my-6"
-              />
             )}
           </>
         )}
