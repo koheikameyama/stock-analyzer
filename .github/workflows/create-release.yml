@@ -1,20 +1,17 @@
-name: Deploy and Release
+name: Create Release
 
 on:
-  # develop→mainのPRがマージされた時のみ実行
-  pull_request:
-    branches:
-      - main
+  # Railway Webhookからトリガーされる
+  repository_dispatch:
     types:
-      - closed
+      - railway-deploy-success
 
   # 手動実行も可能
   workflow_dispatch:
 
 jobs:
   create-release:
-    # PRがマージされた場合、かつdevelop→mainの場合のみ実行
-    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'develop'
+    # Railway Webhookまたは手動実行時に実行
     runs-on: ubuntu-latest
 
     permissions:
@@ -33,16 +30,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # マージされたPRの番号を取得
-          PR_NUMBER="${{ github.event.pull_request.number }}"
+          # 最近マージされたdevelop→mainのPRを検索
+          PR_NUMBER=$(gh pr list \
+            --base main \
+            --head develop \
+            --state merged \
+            --limit 1 \
+            --json number \
+            --jq '.[0].number')
 
-          if [ -z "$PR_NUMBER" ]; then
-            echo "No PR number found"
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
+            echo "No merged deploy PR found"
             echo "should_release=false" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          echo "Found merged PR #$PR_NUMBER"
+          echo "Found merged deploy PR #$PR_NUMBER"
 
           # マージされたPRの情報を取得
           DEPLOY_PR=$(gh pr view $PR_NUMBER --json body --jq '.')
