@@ -1,16 +1,20 @@
 name: Deploy and Release
 
 on:
-  # mainブランチへのpush（PRマージ）時に実行
-  push:
+  # develop→mainのPRがマージされた時のみ実行
+  pull_request:
     branches:
       - main
+    types:
+      - closed
 
   # 手動実行も可能
   workflow_dispatch:
 
 jobs:
   create-release:
+    # PRがマージされた場合、かつdevelop→mainの場合のみ実行
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'develop'
     runs-on: ubuntu-latest
 
     permissions:
@@ -29,12 +33,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 最新のマージコミットからPR番号を取得
-          MERGE_COMMIT_MSG=$(git log -1 --pretty=%B)
-          PR_NUMBER=$(echo "$MERGE_COMMIT_MSG" | grep -oP '#\K\d+' | head -1)
+          # マージされたPRの番号を取得
+          PR_NUMBER="${{ github.event.pull_request.number }}"
 
           if [ -z "$PR_NUMBER" ]; then
-            echo "No PR number found in merge commit"
+            echo "No PR number found"
             echo "should_release=false" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -42,17 +45,7 @@ jobs:
           echo "Found merged PR #$PR_NUMBER"
 
           # マージされたPRの情報を取得
-          DEPLOY_PR=$(gh pr view $PR_NUMBER --json body,baseRefName,headRefName --jq '.')
-          BASE_BRANCH=$(echo "$DEPLOY_PR" | jq -r '.baseRefName')
-          HEAD_BRANCH=$(echo "$DEPLOY_PR" | jq -r '.headRefName')
-
-          # develop→mainのPRでない場合はスキップ
-          if [ "$BASE_BRANCH" != "main" ] || [ "$HEAD_BRANCH" != "develop" ]; then
-            echo "Not a deploy PR (develop→main)"
-            echo "should_release=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
+          DEPLOY_PR=$(gh pr view $PR_NUMBER --json body --jq '.')
           DEPLOY_PR_BODY=$(echo "$DEPLOY_PR" | jq -r '.body')
 
           echo "Found deploy PR #$PR_NUMBER"

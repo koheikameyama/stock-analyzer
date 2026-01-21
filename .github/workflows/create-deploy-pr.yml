@@ -1,20 +1,16 @@
 name: Create Deploy PR
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches:
       - develop
 
 jobs:
   create-pr:
-    # PRがマージされた場合のみ実行、かつhotfixブランチ以外
-    if: github.event.pull_request.merged == true && !startsWith(github.event.pull_request.head.ref, 'hotfix/')
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: write
-      pull-requests: write
+    # GH_PATを使用するため、permissionsは空に設定（GITHUB_TOKENを無効化）
+    permissions: {}
 
     steps:
       - name: Checkout develop branch
@@ -41,14 +37,17 @@ jobs:
       - name: Check existing PR
         if: steps.check_pr.outputs.needs_pr == 'true'
         id: existing_pr
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          # REST APIで既存のdevelop→mainのPRを確認（GraphQLエラー回避）
-          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&head=${{ github.repository_owner }}:develop&base=main")
+          # 既存のdevelop→mainのPRがあるか確認（GitHub REST API使用）
+          RESPONSE=$(curl -s -H "Authorization: token $GH_PAT" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&base=main&head=${{ github.repository_owner }}:develop")
 
-          EXISTING_PR=$(echo "$RESPONSE" | jq -r '.[0].number // ""')
+          EXISTING_PR=$(echo "$RESPONSE" | jq -r '.[0].number // empty')
 
-          if [ -n "$EXISTING_PR" ] && [ "$EXISTING_PR" != "null" ]; then
+          if [ -n "$EXISTING_PR" ]; then
             echo "has_pr=true" >> $GITHUB_OUTPUT
             echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
             echo "Existing PR found: #$EXISTING_PR"
@@ -61,181 +60,102 @@ jobs:
         if: steps.check_pr.outputs.needs_pr == 'true'
         id: get_prs
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          # mainとdevelopの差分から全てのコミットを取得
-          ALL_COMMITS=$(git log origin/main..develop --pretty=format:"%H %s")
+          # mainとdevelopの差分から全コミット（マージコミット + Squash Merge）を取得
+          # main→developの同期コミットは除外
+          ALL_COMMITS=$(git log origin/main..develop --pretty=format:"%H %s" | grep -E '#[0-9]+' | grep -v "chore: Sync main to develop" || true)
 
           if [ -z "$ALL_COMMITS" ]; then
-            echo "No commits found"
+            echo "No merged PRs found"
             echo "pr_list=" >> $GITHUB_OUTPUT
-            echo "highest_version=" >> $GITHUB_OUTPUT
-            echo "user_facing_changes=" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # PRナンバーを抽出してラベルを取得（重複除去）
+          # PRナンバーを抽出してタイトルを取得（重複排除）
           PR_LIST=""
-          PR_NUMBERS_SEEN=""
-          HIGHEST_VERSION=""
-          VERSION_PRIORITY=0  # 0=none, 1=patch, 2=minor, 3=major
-          USER_FACING_CHANGES=""
-
+          declare -A SEEN_PRS
           while read -r commit_hash commit_msg; do
-            # コミットメッセージから PR番号を抽出（(#123) または Merge pull request #123 の形式）
-            PR_NUMBER=$(echo "$commit_msg" | grep -oP '(?:\(#|\s#)\K\d+' | head -1 || true)
+            PR_NUMBER=$(echo "$commit_msg" | grep -oP '#\K\d+' || true)
+            if [ -n "$PR_NUMBER" ] && [ -z "${SEEN_PRS[$PR_NUMBER]}" ]; then
+              SEEN_PRS[$PR_NUMBER]=1
 
-            if [ -n "$PR_NUMBER" ]; then
-              # 重複チェック
-              if ! echo "$PR_NUMBERS_SEEN" | grep -q "\b$PR_NUMBER\b"; then
-                PR_NUMBERS_SEEN="$PR_NUMBERS_SEEN $PR_NUMBER"
+              # タイトルとラベルを取得（GitHub REST API使用）
+              PR_INFO=$(curl -s -H "Authorization: token $GH_PAT" \
+                -H "Accept: application/vnd.github.v3+json" \
+                "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" 2>/dev/null || echo '{"title":"","labels":[]}')
+              PR_TITLE=$(echo "$PR_INFO" | jq -r '.title // ""')
 
-                # PR情報を取得
-                PR_INFO=$(gh pr view $PR_NUMBER --json title,labels,body || true)
-                PR_TITLE=$(echo "$PR_INFO" | jq -r '.title')
-                LABELS=$(echo "$PR_INFO" | jq -r '.labels[].name')
-                PR_BODY=$(echo "$PR_INFO" | jq -r '.body')
+              # タイトルが空の場合はコミットメッセージから抽出
+              if [ -z "$PR_TITLE" ]; then
+                PR_TITLE=$(echo "$commit_msg" | sed -E 's/^[a-f0-9]+ //; s/ \(#[0-9]+\)$//')
+              fi
 
-                # バージョンラベルを取得
-                VERSION_LABEL=""
-                CURRENT_PRIORITY=0
-                if echo "$LABELS" | grep -q "version:major"; then
-                  VERSION_LABEL="[major]"
-                  CURRENT_PRIORITY=3
-                elif echo "$LABELS" | grep -q "version:minor"; then
-                  VERSION_LABEL="[minor]"
-                  CURRENT_PRIORITY=2
-                elif echo "$LABELS" | grep -q "version:patch"; then
-                  VERSION_LABEL="[patch]"
-                  CURRENT_PRIORITY=1
-                fi
+              LABELS=$(echo "$PR_INFO" | jq -r '.labels[]?.name // empty' 2>/dev/null | tr '\n' ',' | sed 's/,$//')
 
-                # 最も高いバージョンラベルを記録
-                if [ $CURRENT_PRIORITY -gt $VERSION_PRIORITY ]; then
-                  VERSION_PRIORITY=$CURRENT_PRIORITY
-                  if [ $CURRENT_PRIORITY -eq 3 ]; then
-                    HIGHEST_VERSION="version:major"
-                  elif [ $CURRENT_PRIORITY -eq 2 ]; then
-                    HIGHEST_VERSION="version:minor"
-                  elif [ $CURRENT_PRIORITY -eq 1 ]; then
-                    HIGHEST_VERSION="version:patch"
-                  fi
-                fi
-
-                # バージョンラベル付きPRの「ユーザー向けの変更」を抽出
-                if [ -n "$VERSION_LABEL" ] && [ -n "$PR_BODY" ]; then
-                  # PR本文から「## ユーザー向けの変更」セクションを抽出
-                  CHANGES=$(echo "$PR_BODY" | awk '
-                    /^## ユーザー向けの変更/ {flag=1; next}
-                    /^## / {flag=0}
-                    flag && /^[^#]/ {print}
-                  ' | sed '/^$/d')
-
-                  if [ -n "$CHANGES" ]; then
-                    USER_FACING_CHANGES="${USER_FACING_CHANGES}${CHANGES}\n"
-                  fi
-                fi
-
-                # PRリストに追加（PRリンク + バージョンラベル）
-                PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
-                if [ -n "$VERSION_LABEL" ]; then
-                  PR_LIST="${PR_LIST}\n- $VERSION_LABEL [$PR_TITLE]($PR_URL)"
-                else
-                  PR_LIST="${PR_LIST}\n- [$PR_TITLE]($PR_URL)"
-                fi
+              if [ -n "$LABELS" ]; then
+                PR_LIST="${PR_LIST}- #${PR_NUMBER}: ${PR_TITLE} [${LABELS}]\n"
+              else
+                PR_LIST="${PR_LIST}- #${PR_NUMBER}: ${PR_TITLE}\n"
               fi
             fi
           done <<< "$ALL_COMMITS"
 
-          if [ -z "$PR_LIST" ]; then
-            echo "No PR numbers found in commits"
-            echo "pr_list=" >> $GITHUB_OUTPUT
-            echo "highest_version=" >> $GITHUB_OUTPUT
-            echo "user_facing_changes=" >> $GITHUB_OUTPUT
-          else
-            echo "pr_list<<EOF" >> $GITHUB_OUTPUT
-            echo -e "$PR_LIST" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-            echo "highest_version=$HIGHEST_VERSION" >> $GITHUB_OUTPUT
-            echo "Highest version label: $HIGHEST_VERSION"
-
-            if [ -n "$USER_FACING_CHANGES" ]; then
-              echo "user_facing_changes<<EOF" >> $GITHUB_OUTPUT
-              echo -e "$USER_FACING_CHANGES" >> $GITHUB_OUTPUT
-              echo "EOF" >> $GITHUB_OUTPUT
-            else
-              echo "user_facing_changes=" >> $GITHUB_OUTPUT
-            fi
-          fi
+          echo "pr_list<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$PR_LIST" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create or update PR to main
         if: steps.check_pr.outputs.needs_pr == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
           PR_NUMBER: ${{ steps.existing_pr.outputs.pr_number }}
           HAS_PR: ${{ steps.existing_pr.outputs.has_pr }}
           PR_LIST: ${{ steps.get_prs.outputs.pr_list }}
-          USER_FACING_CHANGES: ${{ steps.get_prs.outputs.user_facing_changes }}
-          HIGHEST_VERSION: ${{ steps.get_prs.outputs.highest_version }}
         run: |
           TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
 
-          # PR本文をファイルに保存
-          {
-            echo "## デプロイ準備完了"
-            echo ""
-            echo "developブランチの変更をmainにマージする準備ができました。"
-            echo ""
+          PR_BODY="## デプロイ準備完了
 
-            # ユーザー向けの変更セクション（バージョンラベル付きPRがある場合のみ）
-            if [ -n "$USER_FACING_CHANGES" ]; then
-              echo "### ユーザー向けの変更"
-              echo ""
-              echo -e "$USER_FACING_CHANGES"
-              echo ""
-            fi
+          developブランチの変更をmainにマージする準備ができました。
 
-            echo "### 含まれる変更"
-            echo -e "$PR_LIST"
-            echo ""
-            echo "### 次のステップ"
-            echo "1. このPRの内容を確認"
-            echo "2. 問題なければマージ"
-            echo "3. mainへのマージ後、Railwayが自動デプロイ"
-            echo ""
-            echo "---"
-            echo "_Last updated: $TIMESTAMP_"
-          } > /tmp/pr_body.txt
+          ### 含まれる変更
+          $PR_LIST
+
+          ### 次のステップ
+          1. このPRの内容を確認
+          2. 問題なければマージ
+          3. mainへのマージ後、Railwayが自動デプロイ
+
+          ⚠️ **注意**: このPRは参考用です。実際のデプロイは毎日深夜2:00の自動デプロイで行われます。
+
+          ---
+          _Last updated: $TIMESTAMP_"
+
+          # JSON形式でボディをエスケープ
+          PR_BODY_JSON=$(echo "$PR_BODY" | jq -Rs .)
 
           if [ "$HAS_PR" = "true" ]; then
-            # 既存PRを更新
-            gh pr edit $PR_NUMBER --body-file /tmp/pr_body.txt
+            # 既存PRを更新（GitHub REST API使用）
+            curl -s -X PATCH \
+              -H "Authorization: token $GH_PAT" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" \
+              -d "{\"body\": $PR_BODY_JSON}"
             echo "Updated existing PR #$PR_NUMBER"
-            DEPLOY_PR_NUMBER=$PR_NUMBER
           else
-            # 新規PR作成
+            # 新規PR作成（GitHub REST API使用）
             PR_TITLE="chore: Ready to deploy $(date -u +%Y-%m-%d)"
-            PR_URL=$(gh pr create \
-              --base main \
-              --head develop \
-              --title "$PR_TITLE" \
-              --body-file /tmp/pr_body.txt)
-            DEPLOY_PR_NUMBER=$(echo "$PR_URL" | grep -oP '\d+$')
+            PR_TITLE_JSON=$(echo "$PR_TITLE" | jq -Rs .)
+
+            RESPONSE=$(curl -s -X POST \
+              -H "Authorization: token $GH_PAT" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls" \
+              -d "{\"title\": $PR_TITLE_JSON, \"body\": $PR_BODY_JSON, \"head\": \"develop\", \"base\": \"main\"}")
+
+            PR_URL=$(echo "$RESPONSE" | jq -r '.html_url')
             echo "Created new PR: $PR_URL"
-          fi
-
-          # バージョンラベルを付与
-          if [ -n "$HIGHEST_VERSION" ] && [ -n "$DEPLOY_PR_NUMBER" ]; then
-            echo "Adding label $HIGHEST_VERSION to PR #$DEPLOY_PR_NUMBER"
-
-            # 既存のバージョンラベルを削除
-            gh pr edit $DEPLOY_PR_NUMBER --remove-label "version:major" 2>/dev/null || true
-            gh pr edit $DEPLOY_PR_NUMBER --remove-label "version:minor" 2>/dev/null || true
-            gh pr edit $DEPLOY_PR_NUMBER --remove-label "version:patch" 2>/dev/null || true
-
-            # 新しいバージョンラベルを追加
-            gh pr edit $DEPLOY_PR_NUMBER --add-label "$HIGHEST_VERSION"
-            echo "Added label: $HIGHEST_VERSION"
           fi
 
       - name: Summary
