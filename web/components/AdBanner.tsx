@@ -61,9 +61,21 @@ export const AdBanner: React.FC<AdBannerProps> = ({
         const isAdLoaded = adRef.current.getAttribute('data-adsbygoogle-status');
 
         if (!isAdLoaded) {
-          const adsbygoogle = (window.adsbygoogle = window.adsbygoogle || []);
-          adsbygoogle.push({});
-          isLoadedRef.current = true;
+          // 親要素の幅が確定するまで待つ
+          const checkWidth = () => {
+            const container = adRef.current?.parentElement;
+            if (container && container.offsetWidth > 0) {
+              const adsbygoogle = (window.adsbygoogle = window.adsbygoogle || []);
+              adsbygoogle.push({});
+              isLoadedRef.current = true;
+            } else {
+              // 幅が0の場合は少し待ってから再試行
+              setTimeout(checkWidth, 100);
+            }
+          };
+
+          // 初回チェック
+          checkWidth();
         }
       }
     } catch (err) {
@@ -72,11 +84,11 @@ export const AdBanner: React.FC<AdBannerProps> = ({
   }, []);
 
   return (
-    <div className={`ad-container ${className}`}>
+    <div className={`ad-container w-full min-w-[300px] ${className}`}>
       <ins
         ref={adRef}
         className="adsbygoogle"
-        style={{ display: 'block' }}
+        style={{ display: 'block', minHeight: '50px' }}
         data-ad-client="ca-pub-7558679080857597"
         data-ad-slot={adSlot}
         data-ad-format={adFormat}
