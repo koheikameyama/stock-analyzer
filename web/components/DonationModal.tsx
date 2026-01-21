@@ -124,25 +124,43 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
         </div>
 
         {/* Footer */}
-        <div className="bg-surface-50 border-t border-surface-100 px-6 py-4 flex flex-col sm:flex-row gap-3 justify-end sticky bottom-0">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 bg-surface-200 hover:bg-surface-300 text-surface-700 font-medium rounded-lg transition-colors"
-          >
-            後で
-          </button>
-          <a
-            href="https://github.com/sponsors/koheikameyama"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-6 py-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-medium rounded-lg transition-all shadow-sm text-center"
-            onClick={onClose}
-          >
-            <span className="flex items-center justify-center gap-2">
-              <span>💝</span>
-              <span>サービスを支援する</span>
-            </span>
-          </a>
+        <div className="bg-surface-50 border-t border-surface-100 px-6 py-4 sticky bottom-0">
+          <div className="flex flex-col gap-3">
+            {/* 支援方法の選択肢 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <a
+                href="https://github.com/sponsors/koheikameyama"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-medium rounded-lg transition-all shadow-sm text-center"
+                onClick={onClose}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <span>💻</span>
+                  <span>GitHub Sponsors</span>
+                </span>
+              </a>
+              <a
+                href="https://fanpato.com/YOUR_USERNAME" // TODO: 実際のFANPATOのURLに置き換え
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-medium rounded-lg transition-all shadow-sm text-center"
+                onClick={onClose}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <span>💝</span>
+                  <span>FANPATO</span>
+                </span>
+              </a>
+            </div>
+            {/* 後でボタン */}
+            <button
+              onClick={onClose}
+              className="w-full px-6 py-2 bg-surface-200 hover:bg-surface-300 text-surface-700 font-medium rounded-lg transition-colors"
+            >
+              後で
+            </button>
+          </div>
         </div>
       </div>
     </div>
