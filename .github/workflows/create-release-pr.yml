@@ -1,4 +1,4 @@
-name: Create Deploy PR
+name: Create Release PR
 
 on:
   pull_request:
