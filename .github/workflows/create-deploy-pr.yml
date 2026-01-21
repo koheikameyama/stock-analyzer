@@ -9,9 +9,8 @@ jobs:
   create-pr:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: write
-      pull-requests: write
+    # GH_PATを使用するため、permissionsは空に設定（GITHUB_TOKENを無効化）
+    permissions: {}
 
     steps:
       - name: Checkout develop branch
