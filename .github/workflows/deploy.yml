@@ -192,24 +192,32 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           # main→developの同期PRを作成
-          SYNC_PR=$(gh pr list --head main --base develop --state open --json number --jq '.[0].number')
+          SYNC_PR=$(gh pr list --head main --base develop --state open --json number --jq '.[0].number' || echo "")
 
-          if [ -n "$SYNC_PR" ] && [ "$SYNC_PR" != "null" ]; then
+          if [ -n "$SYNC_PR" ] && [ "$SYNC_PR" != "null" ] && [ "$SYNC_PR" != "" ]; then
             echo "Sync PR #$SYNC_PR already exists, merging..."
             gh pr merge $SYNC_PR --merge
+            echo "✅ Synced main to develop via PR #$SYNC_PR"
           else
             echo "Creating sync PR: main → develop"
-            gh pr create \
+            # PRが既に存在する場合はエラーを無視
+            if gh pr create \
               --base develop \
               --head main \
               --title "chore: Sync main to develop" \
-              --body "Automatic sync from main to develop after deployment"
+              --body "Automatic sync from main to develop after deployment" 2>/dev/null; then
+              echo "PR created successfully"
+            else
+              echo "PR already exists or creation failed, checking existing PR..."
+            fi
 
-            # 作成したPRを即座にマージ
-            NEW_SYNC_PR=$(gh pr list --head main --base develop --state open --json number --jq '.[0].number')
-            if [ -n "$NEW_SYNC_PR" ] && [ "$NEW_SYNC_PR" != "null" ]; then
+            # 作成または既存のPRを取得してマージ
+            NEW_SYNC_PR=$(gh pr list --head main --base develop --state open --json number --jq '.[0].number' || echo "")
+            if [ -n "$NEW_SYNC_PR" ] && [ "$NEW_SYNC_PR" != "null" ] && [ "$NEW_SYNC_PR" != "" ]; then
               gh pr merge $NEW_SYNC_PR --merge
               echo "✅ Synced main to develop via PR #$NEW_SYNC_PR"
+            else
+              echo "⚠️ No sync PR found to merge"
             fi
           fi
 
