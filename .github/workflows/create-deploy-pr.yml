@@ -62,20 +62,24 @@ jobs:
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          # mainとdevelopの差分からマージコミットを取得
-          MERGE_COMMITS=$(git log origin/main..develop --merges --pretty=format:"%H %s" | grep "Merge pull request" || true)
+          # mainとdevelopの差分から全コミット（マージコミット + Squash Merge）を取得
+          # main→developの同期コミットは除外
+          ALL_COMMITS=$(git log origin/main..develop --pretty=format:"%H %s" | grep -E '#[0-9]+' | grep -v "chore: Sync main to develop" || true)
 
-          if [ -z "$MERGE_COMMITS" ]; then
+          if [ -z "$ALL_COMMITS" ]; then
             echo "No merged PRs found"
             echo "pr_list=" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # PRナンバーを抽出してタイトルを取得
+          # PRナンバーを抽出してタイトルを取得（重複排除）
           PR_LIST=""
+          declare -A SEEN_PRS
           while read -r commit_hash commit_msg; do
             PR_NUMBER=$(echo "$commit_msg" | grep -oP '#\K\d+' || true)
-            if [ -n "$PR_NUMBER" ]; then
+            if [ -n "$PR_NUMBER" ] && [ -z "${SEEN_PRS[$PR_NUMBER]}" ]; then
+              SEEN_PRS[$PR_NUMBER]=1
+
               # タイトルとラベルを取得（GitHub REST API使用）
               PR_INFO=$(curl -s -H "Authorization: token $GH_PAT" \
                 -H "Accept: application/vnd.github.v3+json" \
@@ -84,7 +88,7 @@ jobs:
 
               # タイトルが空の場合はコミットメッセージから抽出
               if [ -z "$PR_TITLE" ]; then
-                PR_TITLE=$(echo "$commit_msg" | sed 's/Merge pull request #[0-9]* from [^ ]* //')
+                PR_TITLE=$(echo "$commit_msg" | sed -E 's/^[a-f0-9]+ //; s/ \(#[0-9]+\)$//')
               fi
 
               LABELS=$(echo "$PR_INFO" | jq -r '.labels[]?.name // empty' 2>/dev/null | tr '\n' ',' | sed 's/,$//')
@@ -95,7 +99,7 @@ jobs:
                 PR_LIST="${PR_LIST}- #${PR_NUMBER}: ${PR_TITLE}\n"
               fi
             fi
-          done <<< "$MERGE_COMMITS"
+          done <<< "$ALL_COMMITS"
 
           echo "pr_list<<EOF" >> $GITHUB_OUTPUT
           echo -e "$PR_LIST" >> $GITHUB_OUTPUT
