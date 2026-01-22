@@ -194,6 +194,7 @@ jobs:
           echo "✅ GitHub Release created: $NEW_VERSION"
 
       - name: Sync main to develop
+        if: steps.version_check.outputs.should_release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
