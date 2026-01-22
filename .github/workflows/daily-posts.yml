@@ -1,13 +1,13 @@
 name: Daily X Posts
 
 on:
-  # 毎日3回実行
+  # 毎日3回実行（ただし月曜の昼はweekly-summaryが実行されるため除外）
   schedule:
-    # 朝 7:00 JST (UTC 22:00前日)
+    # 朝 7:00 JST (UTC 22:00前日) - 毎日
     - cron: '0 22 * * *'
-    # 昼 12:00 JST (UTC 3:00)
-    - cron: '0 3 * * *'
-    # 夜 18:00 JST (UTC 9:00)
+    # 昼 12:00 JST (UTC 3:00) - 火〜日のみ（月曜はweekly-summary）
+    - cron: '0 3 * * 2-7'
+    # 夜 18:00 JST (UTC 9:00) - 毎日
     - cron: '0 9 * * *'
 
   # 手動実行も可能
