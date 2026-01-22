@@ -56,66 +56,61 @@ jobs:
 
           echo "Found deploy PR #$PR_NUMBER"
 
-          # PR本文から「ユーザー向けの変更」セクションを抽出
-          USER_FACING_CHANGES=$(echo "$DEPLOY_PR_BODY" | awk '
-            /^### ユーザー向けの変更/ {flag=1; next}
-            /^### / {flag=0}
-            flag && /^[^#]/ && NF {print}
-          ')
-
-          # 「ユーザー向けの変更」セクションがない場合はリリースを作成しない
-          if [ -z "$USER_FACING_CHANGES" ]; then
-            echo "No user-facing changes found in deploy PR"
-            echo "should_release=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          echo "User-facing changes from deploy PR:"
-          echo "$USER_FACING_CHANGES"
-
-          # PR本文から「含まれる変更」セクションを抽出してバージョンラベルを判定
+          # PR本文から「含まれる変更」セクションを抽出
           PR_LIST=$(echo "$DEPLOY_PR_BODY" | awk '
             /^### 含まれる変更/ {flag=1; next}
             /^### / {flag=0}
             flag && /^- / {print}
           ')
 
-          # バージョンラベルをチェック
+          # バージョンラベル付きのPR番号を抽出
           HAS_MAJOR=false
           HAS_MINOR=false
           HAS_PATCH=false
+          VERSION_PR_NUMBERS=""
 
           while IFS= read -r line; do
             [ -z "$line" ] && continue
 
-            if echo "$line" | grep -q "\[major\]"; then
+            # PR番号を抽出（例: "- #160: タイトル [version:minor]" から "160" を抽出）
+            PR_NUM=$(echo "$line" | grep -oP '#\K\d+' | head -1)
+
+            if echo "$line" | grep -q "version:major"; then
               HAS_MAJOR=true
-            elif echo "$line" | grep -q "\[minor\]"; then
+              VERSION_PR_NUMBERS="${VERSION_PR_NUMBERS}${PR_NUM},"
+            elif echo "$line" | grep -q "version:minor"; then
               HAS_MINOR=true
-            elif echo "$line" | grep -q "\[patch\]"; then
+              VERSION_PR_NUMBERS="${VERSION_PR_NUMBERS}${PR_NUM},"
+            elif echo "$line" | grep -q "version:patch"; then
               HAS_PATCH=true
+              VERSION_PR_NUMBERS="${VERSION_PR_NUMBERS}${PR_NUM},"
             fi
           done <<< "$PR_LIST"
+
+          # バージョンラベルがない場合はリリースを作成しない
+          if [ "$HAS_MAJOR" = false ] && [ "$HAS_MINOR" = false ] && [ "$HAS_PATCH" = false ]; then
+            echo "No version labels found in PR list"
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
           # バージョンアップタイプを決定
           if [ "$HAS_MAJOR" = true ]; then
             BUMP_TYPE="major"
           elif [ "$HAS_MINOR" = true ]; then
             BUMP_TYPE="minor"
-          elif [ "$HAS_PATCH" = true ]; then
-            BUMP_TYPE="patch"
           else
-            echo "No version labels found in PR list"
-            echo "should_release=false" >> $GITHUB_OUTPUT
-            exit 0
+            BUMP_TYPE="patch"
           fi
+
+          # 末尾のカンマを削除
+          VERSION_PR_NUMBERS=$(echo "$VERSION_PR_NUMBERS" | sed 's/,$//')
 
           echo "should_release=true" >> $GITHUB_OUTPUT
           echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
-          echo "user_facing_changes<<EOF" >> $GITHUB_OUTPUT
-          echo "$USER_FACING_CHANGES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "version_pr_numbers=$VERSION_PR_NUMBERS" >> $GITHUB_OUTPUT
           echo "Version bump type: $BUMP_TYPE"
+          echo "Version PRs: $VERSION_PR_NUMBERS"
 
       - name: Calculate new version
         if: steps.version_check.outputs.should_release == 'true'
@@ -151,31 +146,82 @@ jobs:
           echo "New version: $NEW_VERSION"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create release notes
+      - name: Get PR details for AI analysis
+        if: steps.version_check.outputs.should_release == 'true'
+        id: get_pr_details
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBERS="${{ steps.version_check.outputs.version_pr_numbers }}"
+
+          # PR情報をJSON配列として収集
+          PR_DETAILS="[]"
+
+          IFS=',' read -ra PR_ARRAY <<< "$PR_NUMBERS"
+          for PR_NUM in "${PR_ARRAY[@]}"; do
+            if [ -n "$PR_NUM" ]; then
+              echo "Fetching PR #$PR_NUM details..."
+
+              # PRの詳細情報を取得
+              PR_INFO=$(gh pr view "$PR_NUM" --json number,title,body 2>/dev/null || echo '{"number":0,"title":"","body":""}')
+
+              # JSON配列に追加
+              PR_DETAILS=$(echo "$PR_DETAILS" | jq --argjson pr "$PR_INFO" '. += [$pr]')
+            fi
+          done
+
+          echo "pr_details<<EOF" >> $GITHUB_OUTPUT
+          echo "$PR_DETAILS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes with AI
         if: steps.version_check.outputs.should_release == 'true'
         id: release_notes
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          USER_FACING_CHANGES="${{ steps.version_check.outputs.user_facing_changes }}"
+          PR_DETAILS='${{ steps.get_pr_details.outputs.pr_details }}'
 
-          # ユーザー向けの変更を箇条書きに変換（既に箇条書きになっている場合はそのまま）
-          FORMATTED_CHANGES=""
-          while IFS= read -r line; do
-            if [ -n "$line" ]; then
-              # 既に「- 」で始まっている場合はそのまま、そうでない場合は追加
-              if echo "$line" | grep -q "^- "; then
-                FORMATTED_CHANGES="${FORMATTED_CHANGES}${line}\n"
-              else
-                FORMATTED_CHANGES="${FORMATTED_CHANGES}- ${line}\n"
-              fi
-            fi
-          done <<< "$USER_FACING_CHANGES"
+          # OpenAI APIにリクエスト
+          PROMPT="以下のPRの内容をもとに、ユーザー向けの華やかで分かりやすいリリースノートを生成してください。
 
-          # リリースノートを作成
-          RELEASE_NOTES="## 更新内容\n\n$FORMATTED_CHANGES"
+要件:
+- 各変更点を「## 更新内容」セクション配下に箇条書きで記載
+- 技術用語は避け、ユーザーにとっての価値を明確に説明
+- 絵文字を適度に使用して見やすく
+- 簡潔で読みやすい文章
+- マークダウン形式で出力
 
-          # 複数行の出力を正しく扱う
+PRの情報:
+$PR_DETAILS"
+
+          RESPONSE=$(curl -s https://api.openai.com/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -d "{
+              \"model\": \"gpt-4o-mini\",
+              \"messages\": [
+                {
+                  \"role\": \"system\",
+                  \"content\": \"あなたはユーザー向けのリリースノートを作成する専門家です。技術的な変更を、ユーザーにとっての価値に変換して説明してください。\"
+                },
+                {
+                  \"role\": \"user\",
+                  \"content\": $(echo "$PROMPT" | jq -Rs .)
+                }
+              ],
+              \"temperature\": 0.7
+            }")
+
+          # レスポンスからリリースノートを抽出
+          RELEASE_NOTES=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // "## 更新内容\n\nリリースノートの生成に失敗しました。"')
+
+          echo "Generated release notes:"
+          echo "$RELEASE_NOTES"
+
+          # 出力
           echo "release_notes<<EOF" >> $GITHUB_OUTPUT
-          echo -e "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
