@@ -54,23 +54,23 @@ jobs:
             # 最新のコミットメッセージを取得
             LATEST_COMMIT_MSG=$(git log -1 --pretty=format:"%s")
 
+            # PR本文を作成
+            PR_BODY="## 🔄 自動同期
+
+mainブランチの変更をdevelopブランチに同期します。
+
+### 最新のコミット
+${LATEST_COMMIT_MSG}
+
+---
+*このPRは自動的に作成されました*"
+
             # PRを作成
             gh pr create \
               --base develop \
               --head main \
               --title "chore: Sync main to develop" \
-              --body "$(cat <<'EOF'
-## 🔄 自動同期
-
-mainブランチの変更をdevelopブランチに同期します。
-
-### 最新のコミット
-$LATEST_COMMIT_MSG
-
----
-*このPRは自動的に作成されました*
-EOF
-)" || {
+              --body "$PR_BODY" || {
               echo "⚠️ PR作成に失敗（既に存在する可能性）"
               exit 0
             }
