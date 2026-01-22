@@ -66,13 +66,28 @@ def generate_tweet_template(analyses: List[Dict]) -> str:
     # 信頼度順にソート（上位3つまで）
     buy_top3 = sorted(buy_list, key=lambda x: x['confidence_score'], reverse=True)[:3]
 
-    # 日付範囲を計算
+    # 日付範囲を計算（日曜日実行なので、今週 = 月曜〜今日）
     today = datetime.now()
-    week_start = (today - timedelta(days=6)).strftime('%-m/%-d')
+    # 今週の月曜日を計算
+    days_since_monday = (today.weekday() + 1) % 7  # 日曜=0なので、月曜日からの日数
+    if days_since_monday == 0:
+        days_since_monday = 7  # 日曜日の場合は7日前（先週月曜）
+    week_start = (today - timedelta(days=days_since_monday - 1)).strftime('%-m/%-d')
     week_end = today.strftime('%-m/%-d')
 
     # テンプレート生成
-    template = f"""📊 今週のAI分析まとめ（{week_start}-{week_end}）
+    template = f"""📈 今週のAI分析結果まとめ（{week_start}-{week_end}）
+
+【先週の推奨銘柄の成績】
+※ 手動で更新してください
+✅ 銘柄A: +X.X%
+✅ 銘柄B: +X.X%
+❌ 銘柄C: -X.X%
+
+勝率: XX%
+平均リターン: +X.X%
+
+---
 
 【強気推奨】"""
 
