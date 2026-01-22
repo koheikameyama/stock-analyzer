@@ -75,8 +75,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
             </header>
 
-            {/* ページタブ（AI分析 / 銘柄を探す） */}
-            {(pathname === '/' || pathname === '/stocks') && (
+            {/* ページタブ（AI分析 / 銘柄を探す / リクエストランキング） */}
+            {(pathname === '/' || pathname === '/stocks' || pathname === '/requests') && (
                 <div className="bg-white border-b border-surface-200 sticky top-16 z-40">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <nav className="-mb-px flex justify-center gap-2" aria-label="Tabs">
@@ -107,6 +107,20 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                             >
                                 <span className="text-base">🔍</span>
                                 <span>銘柄を探す</span>
+                            </Link>
+                            <Link
+                                href="/requests"
+                                className={`
+                                    flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors
+                                    ${
+                                        pathname === '/requests'
+                                            ? 'border-primary-600 text-primary-600'
+                                            : 'border-transparent text-surface-600 hover:text-surface-900 hover:border-surface-300'
+                                    }
+                                `}
+                            >
+                                <span className="text-base">📊</span>
+                                <span>リクエスト</span>
                             </Link>
                         </nav>
                     </div>
