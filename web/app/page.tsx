@@ -12,6 +12,7 @@ import { AnalysisDetailModal } from '@/components/AnalysisDetailModal';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { AnalysisTargetInfo } from '@/components/AnalysisTargetInfo';
 import { TopPicks } from '@/components/TopPicks';
+import { PushNotificationPromptModal } from '@/components/PushNotificationPromptModal';
 import { useLatestAnalyses, useBatchJobStatus } from '@/hooks/useAnalyses';
 import type { Recommendation } from '@/types/analysis';
 
@@ -156,6 +157,9 @@ export default function Home() {
           analysisId={selectedAnalysisId}
           onClose={handleModalClose}
         />
+
+        {/* プッシュ通知プロンプトモーダル */}
+        <PushNotificationPromptModal />
       </div>
     </Layout>
   );
