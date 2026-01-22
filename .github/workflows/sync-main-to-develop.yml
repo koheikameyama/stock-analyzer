@@ -1,0 +1,99 @@
+name: Sync main to develop
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 全履歴を取得
+
+      - name: Check for differences
+        id: check_diff
+        run: |
+          # main と develop の差分を確認
+          git fetch origin develop
+          DIFF=$(git diff --name-only origin/main origin/develop || echo "")
+
+          if [ -z "$DIFF" ]; then
+            echo "has_diff=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No differences between main and develop"
+          else
+            echo "has_diff=true" >> $GITHUB_OUTPUT
+            echo "📝 Differences found:"
+            echo "$DIFF"
+          fi
+
+      - name: Create or update sync PR
+        if: steps.check_diff.outputs.has_diff == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          # 既存のmain→develop PRを確認
+          EXISTING_PR=$(gh pr list --head main --base develop --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -n "$EXISTING_PR" ] && [ "$EXISTING_PR" != "null" ]; then
+            echo "📋 Sync PR #$EXISTING_PR already exists"
+            echo "Merging existing PR..."
+            gh pr merge $EXISTING_PR --merge --auto
+            echo "✅ Merged PR #$EXISTING_PR"
+          else
+            echo "📝 Creating new sync PR: main → develop"
+
+            # 最新のコミットメッセージを取得
+            LATEST_COMMIT_MSG=$(git log -1 --pretty=format:"%s")
+
+            # PR本文を作成
+            PR_BODY="## 🔄 自動同期
+
+mainブランチの変更をdevelopブランチに同期します。
+
+### 最新のコミット
+${LATEST_COMMIT_MSG}
+
+---
+*このPRは自動的に作成されました*"
+
+            # PRを作成
+            gh pr create \
+              --base develop \
+              --head main \
+              --title "chore: Sync main to develop" \
+              --body "$PR_BODY" || {
+              echo "⚠️ PR作成に失敗（既に存在する可能性）"
+              exit 0
+            }
+
+            # 作成されたPRを取得してマージ
+            SYNC_PR=$(gh pr list --head main --base develop --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
+            if [ -n "$SYNC_PR" ] && [ "$SYNC_PR" != "null" ]; then
+              echo "✅ Created PR #$SYNC_PR"
+              gh pr merge $SYNC_PR --merge --auto
+              echo "✅ Auto-merge enabled for PR #$SYNC_PR"
+            else
+              echo "⚠️ Could not find created PR"
+            fi
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### 🔄 Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.check_diff.outputs.has_diff }}" == "true" ]; then
+            echo "✅ **Synced**: main → develop" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ **No changes**: main and develop are already in sync" >> $GITHUB_STEP_SUMMARY
+          fi

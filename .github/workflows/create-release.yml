@@ -193,36 +193,6 @@ jobs:
 
           echo "✅ GitHub Release created: $NEW_VERSION"
 
-      - name: Sync main to develop
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          # main→developの同期PRを確認
-          SYNC_PR=$(gh pr list --head main --base develop --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
-
-          if [ -n "$SYNC_PR" ] && [ "$SYNC_PR" != "null" ]; then
-            echo "Sync PR #$SYNC_PR already exists, merging..."
-            gh pr merge $SYNC_PR --merge
-            echo "✅ Synced main to develop via PR #$SYNC_PR"
-          else
-            echo "Creating sync PR: main → develop"
-            # PRを作成（既存の場合はスキップ）
-            gh pr create \
-              --base develop \
-              --head main \
-              --title "chore: Sync main to develop" \
-              --body "Automatic sync from main to develop after deployment" 2>/dev/null || true
-
-            # PRを取得してマージ
-            SYNC_PR=$(gh pr list --head main --base develop --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
-            if [ -n "$SYNC_PR" ] && [ "$SYNC_PR" != "null" ]; then
-              gh pr merge $SYNC_PR --merge
-              echo "✅ Synced main to develop via PR #$SYNC_PR"
-            else
-              echo "⚠️ Could not find or create sync PR"
-            fi
-          fi
-
       - name: Summary
         if: always()
         run: |
@@ -233,9 +203,10 @@ jobs:
             echo "✅ **Deployed**: develop → main" >> $GITHUB_STEP_SUMMARY
             echo "📦 **Release Created**: ${{ steps.new_version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
             echo "- **Type**: ${{ steps.version_check.outputs.bump_type }}" >> $GITHUB_STEP_SUMMARY
-            echo "🔄 **Synced**: main → develop" >> $GITHUB_STEP_SUMMARY
           else
             echo "✅ **Deployed**: develop → main (no release)" >> $GITHUB_STEP_SUMMARY
             echo "ℹ️ version:*ラベルがないため、リリースは作成されませんでした" >> $GITHUB_STEP_SUMMARY
-            echo "🔄 **Synced**: main → develop" >> $GITHUB_STEP_SUMMARY
           fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "ℹ️ main → develop の同期は別ワークフローで自動実行されます" >> $GITHUB_STEP_SUMMARY
