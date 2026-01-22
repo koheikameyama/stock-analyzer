@@ -36,14 +36,14 @@ def get_top_picks(conn) -> List[Dict]:
                 s.ticker,
                 s.name,
                 s.sector,
-                a.overall_score,
+                a.confidence_score,
                 a.recommendation,
-                a.summary,
+                a.reason,
                 a.analysis_date
             FROM analyses a
             JOIN stocks s ON a.stock_id = s.id
             WHERE a.analysis_date >= NOW() - INTERVAL '7 days'
-            ORDER BY a.overall_score DESC, a.analysis_date DESC
+            ORDER BY a.confidence_score DESC, a.analysis_date DESC
             LIMIT 3
         """)
         return cur.fetchall()
@@ -83,14 +83,14 @@ def generate_tweet_template(top_picks: List[Dict]) -> str:
 
     for i, stock in enumerate(top_picks):
         medal = medals[i]
-        signal = get_signal(stock['overall_score'])
+        signal = get_signal(stock['confidence_score'])
 
         template += f"{medal} {stock['name']}({stock['ticker']})\n"
-        template += f"スコア: {stock['overall_score']}/100 {signal['icon']}\n"
+        template += f"スコア: {stock['confidence_score']}/100 {signal['icon']}\n"
 
-        # サマリーを短縮（最初の50文字）
-        summary = stock['summary'][:50] + "..." if len(stock['summary']) > 50 else stock['summary']
-        template += f"理由: {summary}\n"
+        # 理由を短縮（最初の50文字）
+        reason = stock['reason'][:50] + "..." if len(stock['reason']) > 50 else stock['reason']
+        template += f"理由: {reason}\n"
         template += f"👉 {signal['text']}\n"
 
         if i < len(top_picks) - 1:

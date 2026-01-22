@@ -23,7 +23,7 @@ export async function GET() {
         stock: true,
       },
       orderBy: [
-        { overallScore: 'desc' },
+        { confidenceScore: 'desc' },
         { analysisDate: 'desc' },
       ],
       take: 3,
@@ -35,11 +35,11 @@ export async function GET() {
       const rank = index + 1;
       const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
 
-      // トレンド判定（overallScoreが80以上なら買い、40未満なら売り）
+      // トレンド判定（confidenceScoreが80以上なら買い、40未満なら売り）
       let signal: 'buy' | 'hold' | 'sell' = 'hold';
-      if (analysis.overallScore >= 80) {
+      if (analysis.confidenceScore >= 80) {
         signal = 'buy';
-      } else if (analysis.overallScore < 40) {
+      } else if (analysis.confidenceScore < 40) {
         signal = 'sell';
       }
 
@@ -49,9 +49,9 @@ export async function GET() {
         signal,
         analysis: {
           id: analysis.id,
-          overallScore: analysis.overallScore,
+          confidenceScore: analysis.confidenceScore,
           recommendation: analysis.recommendation,
-          summary: analysis.summary,
+          reason: analysis.reason,
           analysisDate: analysis.analysisDate,
         },
         stock: {

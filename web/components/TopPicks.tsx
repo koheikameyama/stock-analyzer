@@ -13,9 +13,9 @@ interface TopPick {
   signal: 'buy' | 'hold' | 'sell';
   analysis: {
     id: string;
-    overallScore: number;
+    confidenceScore: number;
     recommendation: string;
-    summary: string;
+    reason: string;
     analysisDate: Date;
   };
   stock: {
@@ -153,7 +153,7 @@ export const TopPicks = ({ onStockClick }: { onStockClick: (analysisId: string) 
                     </div>
                     <div className="flex-shrink-0">
                       <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                        {pick.analysis.overallScore}点
+                        {pick.analysis.confidenceScore}点
                       </div>
                     </div>
                   </div>
@@ -164,9 +164,9 @@ export const TopPicks = ({ onStockClick }: { onStockClick: (analysisId: string) 
                     <span>{signalInfo.text}</span>
                   </div>
 
-                  {/* サマリー */}
+                  {/* 理由 */}
                   <p className="text-sm text-surface-600 mt-2 line-clamp-2">
-                    {pick.analysis.summary}
+                    {pick.analysis.reason}
                   </p>
                 </div>
               </div>
