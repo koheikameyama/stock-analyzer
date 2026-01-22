@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AboutModal } from './AboutModal';
 import { ShareButtons } from './ShareButtons';
+import { FloatingFeedbackButton } from './FloatingFeedbackButton';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -119,6 +120,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             {/* サービス説明モーダル */}
             <AboutModal isOpen={isAboutModalOpen} onClose={() => setIsAboutModalOpen(false)} />
+
+            {/* フローティングフィードバックボタン */}
+            <FloatingFeedbackButton />
 
             {/* フッター */}
             <footer className="bg-white/80 backdrop-blur-sm border-t border-surface-200 mt-auto">
