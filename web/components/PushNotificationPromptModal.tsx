@@ -28,6 +28,22 @@ export const PushNotificationPromptModal: React.FC = () => {
         return;
       }
 
+      // 「後で」を押した時刻を確認
+      const laterTimestamp = localStorage.getItem('pushNotificationPromptLater');
+      if (laterTimestamp) {
+        const laterTime = parseInt(laterTimestamp, 10);
+        const now = Date.now();
+        const hoursElapsed = (now - laterTime) / (1000 * 60 * 60);
+
+        // 24時間経過していない場合は表示しない
+        if (hoursElapsed < 24) {
+          return;
+        }
+
+        // 24時間経過していたら「後で」フラグをクリア
+        localStorage.removeItem('pushNotificationPromptLater');
+      }
+
       // 既に通知許可済みか確認
       if (Notification.permission === 'granted') {
         return;
@@ -107,9 +123,11 @@ export const PushNotificationPromptModal: React.FC = () => {
 
   /**
    * 後で決めるボタン
+   * 24時間後に再表示する
    */
   const handleLater = () => {
-    // 後で決める場合は、次回訪問時にまた表示する
+    // 現在時刻を保存（24時間後に再表示）
+    localStorage.setItem('pushNotificationPromptLater', Date.now().toString());
     setIsOpen(false);
   };
 

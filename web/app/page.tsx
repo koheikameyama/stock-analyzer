@@ -10,9 +10,9 @@ import { FilterBar } from '@/components/FilterBar';
 import { AnalysisTable } from '@/components/AnalysisTable';
 import { AnalysisDetailModal } from '@/components/AnalysisDetailModal';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import PushNotificationToggle from '@/components/PushNotificationToggle';
 import { AnalysisTargetInfo } from '@/components/AnalysisTargetInfo';
 import { TopPicks } from '@/components/TopPicks';
+import { PushNotificationPromptModal } from '@/components/PushNotificationPromptModal';
 import { useLatestAnalyses, useBatchJobStatus } from '@/hooks/useAnalyses';
 import type { Recommendation } from '@/types/analysis';
 
@@ -107,9 +107,6 @@ export default function Home() {
         {/* 今日のおすすめ銘柄 */}
         <TopPicks onStockClick={handleDetailClick} />
 
-        {/* プッシュ通知トグル */}
-        <PushNotificationToggle />
-
         {/* Controls */}
         <div className="flex flex-col sm:flex-row gap-4 justify-end items-start sm:items-center bg-white p-4 rounded-xl border border-surface-200 shadow-sm">
           <FilterBar
@@ -160,6 +157,9 @@ export default function Home() {
           analysisId={selectedAnalysisId}
           onClose={handleModalClose}
         />
+
+        {/* プッシュ通知プロンプトモーダル */}
+        <PushNotificationPromptModal />
       </div>
     </Layout>
   );

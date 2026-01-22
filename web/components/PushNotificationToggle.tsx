@@ -141,25 +141,36 @@ export default function PushNotificationToggle() {
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 text-sm text-gray-600">
-      <div className="flex items-center gap-2">
-        <span className="text-gray-500">🔔</span>
-        <span>日次更新通知</span>
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-700 font-medium">🔔 日次更新通知</span>
+        </div>
+        <p className="text-xs text-gray-500">
+          毎日の分析結果をプッシュ通知でお知らせします
+        </p>
       </div>
+
+      {/* トグルスイッチ */}
       <button
         onClick={isSubscribed ? unsubscribe : subscribe}
         disabled={isLoading}
         className={`
-          px-3 py-1.5 text-xs font-medium rounded-md transition-colors
-          ${
-            isSubscribed
-              ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
-          }
+          relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
           disabled:opacity-50 disabled:cursor-not-allowed
+          ${isSubscribed ? 'bg-blue-600' : 'bg-gray-300'}
         `}
+        role="switch"
+        aria-checked={isSubscribed}
+        aria-label="日次更新通知"
       >
-        {isLoading ? '処理中...' : isSubscribed ? 'ON' : 'OFF'}
+        <span
+          className={`
+            inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+            ${isSubscribed ? 'translate-x-6' : 'translate-x-1'}
+          `}
+        />
       </button>
     </div>
   );
