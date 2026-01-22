@@ -1,0 +1,147 @@
+name: Daily X Posts
+
+on:
+  # 毎日3回実行
+  schedule:
+    # 朝 7:00 JST (UTC 22:00前日)
+    - cron: '0 22 * * *'
+    # 昼 12:00 JST (UTC 3:00)
+    - cron: '0 3 * * *'
+    # 夜 18:00 JST (UTC 9:00)
+    - cron: '0 9 * * *'
+
+  # 手動実行も可能
+  workflow_dispatch:
+    inputs:
+      post_type:
+        description: '投稿タイプ (morning/noon/evening)'
+        required: true
+        default: 'noon'
+        type: choice
+        options:
+          - morning
+          - noon
+          - evening
+
+jobs:
+  generate-post:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          cd batch
+          pip install psycopg2-binary requests python-dotenv
+
+      - name: Determine post type
+        id: post_type
+        run: |
+          # 手動実行の場合は入力値を使用
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ github.event.inputs.post_type }}" >> $GITHUB_OUTPUT
+          else
+            # スケジュール実行の場合は時刻から判定
+            hour=$(date -u +%H)
+            if [ "$hour" = "22" ]; then
+              echo "type=morning" >> $GITHUB_OUTPUT
+            elif [ "$hour" = "03" ]; then
+              echo "type=noon" >> $GITHUB_OUTPUT
+            elif [ "$hour" = "09" ]; then
+              echo "type=evening" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Generate morning post (市況サマリー)
+        if: steps.post_type.outputs.type == 'morning'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          cd batch
+          python -c "
+          import os
+          import requests
+          import json
+          from datetime import datetime
+
+          message = '''おはようございます☀️
+
+【今朝の日本株】
+日経平均: (手動更新)
+TOPIX: (手動更新)
+
+米国市場の影響で(手動更新)の見込み。
+今日は(手動更新)セクターに注目📊
+
+#日本株 #株式投資 #朝の市況'''
+
+          payload = {
+              'text': '📢 *朝の投稿テンプレート*\n\n以下をコピーしてXに投稿してください👇\n\n\`\`\`\n' + message + '\n\`\`\`',
+              'username': 'Stock Analyzer Bot',
+              'icon_emoji': ':chart_with_upwards_trend:'
+          }
+
+          response = requests.post(
+              os.getenv('SLACK_WEBHOOK_URL'),
+              data=json.dumps(payload),
+              headers={'Content-Type': 'application/json'}
+          )
+
+          print('✅ Slackへの送信成功' if response.status_code == 200 else f'❌ 失敗: {response.status_code}')
+          "
+
+      - name: Generate noon post (おすすめ銘柄)
+        if: steps.post_type.outputs.type == 'noon'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          cd batch
+          python daily_top_picks.py
+
+      - name: Generate evening post (市況振り返り)
+        if: steps.post_type.outputs.type == 'evening'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          cd batch
+          python -c "
+          import os
+          import requests
+          import json
+          from datetime import datetime
+
+          message = '''本日の相場まとめ📝
+
+日経平均: (手動更新)
+値上がり: (手動更新)銘柄
+値下がり: (手動更新)銘柄
+
+✅ (手動更新)セクターが堅調
+⚠️ (手動更新)は軟調
+
+明日も引き続き注目です💹
+
+#日本株 #相場振り返り #株式投資'''
+
+          payload = {
+              'text': '📢 *夜の投稿テンプレート*\n\n以下をコピーしてXに投稿してください👇\n\n\`\`\`\n' + message + '\n\`\`\`',
+              'username': 'Stock Analyzer Bot',
+              'icon_emoji': ':chart_with_upwards_trend:'
+          }
+
+          response = requests.post(
+              os.getenv('SLACK_WEBHOOK_URL'),
+              data=json.dumps(payload),
+              headers={'Content-Type': 'application/json'}
+          )
+
+          print('✅ Slackへの送信成功' if response.status_code == 200 else f'❌ 失敗: {response.status_code}')
+          "

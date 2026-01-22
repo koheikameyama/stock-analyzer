@@ -12,6 +12,7 @@ import { AnalysisDetailModal } from '@/components/AnalysisDetailModal';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
 import { AnalysisTargetInfo } from '@/components/AnalysisTargetInfo';
+import { TopPicks } from '@/components/TopPicks';
 import { useLatestAnalyses, useBatchJobStatus } from '@/hooks/useAnalyses';
 import type { Recommendation } from '@/types/analysis';
 
@@ -102,6 +103,9 @@ export default function Home() {
 
         {/* AI分析対象銘柄の説明 */}
         <AnalysisTargetInfo />
+
+        {/* 今日のおすすめ銘柄 */}
+        <TopPicks onStockClick={handleDetailClick} />
 
         {/* プッシュ通知トグル */}
         <PushNotificationToggle />

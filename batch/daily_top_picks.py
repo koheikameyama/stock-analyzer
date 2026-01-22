@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""
+毎日のおすすめ銘柄投稿テンプレート生成スクリプト
+X（Twitter）投稿用のテンプレートをSlackに送信
+"""
+
+import os
+import sys
+from datetime import datetime
+from typing import List, Dict
+import json
+import requests
+
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
+
+# .env読み込み
+env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+load_dotenv(env_path)
+
+DATABASE_URL = os.getenv('DATABASE_URL')
+SLACK_WEBHOOK_URL = os.getenv('SLACK_WEBHOOK_URL')
+
+
+def get_top_picks(conn) -> List[Dict]:
+    """
+    スコア上位3銘柄を取得
+
+    Returns:
+        List[Dict]: 上位3銘柄の分析結果
+    """
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute("""
+            SELECT
+                s.ticker,
+                s.name,
+                s.sector,
+                a.confidence_score,
+                a.recommendation,
+                a.reason,
+                a.analysis_date
+            FROM analyses a
+            JOIN stocks s ON a.stock_id = s.id
+            WHERE a.analysis_date >= NOW() - INTERVAL '7 days'
+            ORDER BY a.confidence_score DESC, a.analysis_date DESC
+            LIMIT 3
+        """)
+        return cur.fetchall()
+
+
+def get_signal(score: float) -> Dict[str, str]:
+    """
+    スコアからシグナル情報を取得
+
+    Args:
+        score: 総合スコア (0-100)
+
+    Returns:
+        Dict: シグナル情報（アイコン、テキスト）
+    """
+    if score >= 80:
+        return {"icon": "📈", "text": "買いシグナル"}
+    elif score < 40:
+        return {"icon": "📉", "text": "売りシグナル"}
+    else:
+        return {"icon": "➡️", "text": "様子見"}
+
+
+def generate_tweet_template(top_picks: List[Dict]) -> str:
+    """
+    X投稿用テンプレートを生成
+
+    Args:
+        top_picks: 上位3銘柄の分析結果
+
+    Returns:
+        str: 投稿テンプレート
+    """
+    medals = ["🥇", "🥈", "🥉"]
+
+    template = "📊 AIが選ぶ本日の注目銘柄\n\n"
+
+    for i, stock in enumerate(top_picks):
+        medal = medals[i]
+        signal = get_signal(stock['confidence_score'])
+
+        template += f"{medal} {stock['name']}({stock['ticker']})\n"
+        template += f"スコア: {stock['confidence_score']}/100 {signal['icon']}\n"
+
+        # 理由を短縮（最初の50文字）
+        reason = stock['reason'][:50] + "..." if len(stock['reason']) > 50 else stock['reason']
+        template += f"理由: {reason}\n"
+        template += f"👉 {signal['text']}\n"
+
+        if i < len(top_picks) - 1:
+            template += "\n"
+
+    template += """
+詳細はこちら👇
+https://stock-analyzer.jp/
+
+#日本株 #AI分析 #おすすめ銘柄 #株式投資"""
+
+    return template
+
+
+def send_to_slack(webhook_url: str, message: str):
+    """
+    Slackに投稿テンプレートを送信
+
+    Args:
+        webhook_url: Slack Webhook URL
+        message: 送信するメッセージ
+    """
+    now = datetime.now().strftime('%H:%M')
+
+    payload = {
+        "text": f"📢 *毎日投稿テンプレート（{now}配信）*\n\n以下をコピーしてXに投稿してください👇\n\n```\n{message}\n```",
+        "username": "Stock Analyzer Bot",
+        "icon_emoji": ":chart_with_upwards_trend:"
+    }
+
+    response = requests.post(
+        webhook_url,
+        data=json.dumps(payload),
+        headers={'Content-Type': 'application/json'}
+    )
+
+    if response.status_code == 200:
+        print("✅ Slackへの送信成功")
+    else:
+        print(f"❌ Slackへの送信失敗: {response.status_code}")
+        print(response.text)
+
+
+def main():
+    """メイン処理"""
+    print("\n" + "=" * 50)
+    print("📊 毎日のおすすめ銘柄テンプレート生成")
+    print(f"⏰ 実行時刻: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("=" * 50 + "\n")
+
+    if not SLACK_WEBHOOK_URL:
+        print("❌ SLACK_WEBHOOK_URLが設定されていません")
+        sys.exit(1)
+
+    conn = None
+    try:
+        # データベース接続
+        conn = psycopg2.connect(DATABASE_URL)
+        print("✅ データベース接続成功\n")
+
+        # 上位3銘柄を取得
+        top_picks = get_top_picks(conn)
+        print(f"📋 取得した銘柄: {len(top_picks)}件\n")
+
+        if len(top_picks) < 3:
+            print("⚠️ 十分な分析結果が見つかりませんでした")
+            sys.exit(0)
+
+        # 投稿テンプレート生成
+        template = generate_tweet_template(top_picks)
+        print("📝 投稿テンプレート:\n")
+        print(template)
+        print("\n")
+
+        # Slackに送信
+        send_to_slack(SLACK_WEBHOOK_URL, template)
+
+        print("\n" + "=" * 50)
+        print("✅ 処理完了")
+        print("=" * 50)
+
+    except Exception as e:
+        print(f"\n❌ エラーが発生しました: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+    finally:
+        if conn:
+            conn.close()
+
+
+if __name__ == "__main__":
+    main()
