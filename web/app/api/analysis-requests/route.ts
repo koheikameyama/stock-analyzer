@@ -1,4 +1,7 @@
 /**
+ * GET /api/analysis-requests
+ * 分析リクエストランキングを取得
+ *
  * POST /api/analysis-requests
  * 分析リクエストを作成・カウントアップ
  */
@@ -7,6 +10,44 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
+
+export async function GET() {
+  try {
+    // リクエスト数順にトップ50を取得
+    const requests = await prisma.analysisRequest.findMany({
+      take: 50,
+      orderBy: {
+        requestCount: 'desc',
+      },
+      include: {
+        stock: {
+          select: {
+            id: true,
+            ticker: true,
+            name: true,
+            sector: true,
+            marketCap: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: requests,
+    });
+  } catch (error) {
+    console.error('分析リクエスト取得エラー:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'リクエストの取得に失敗しました',
+        error: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {

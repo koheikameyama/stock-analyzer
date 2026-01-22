@@ -103,9 +103,10 @@ export default function StocksPage() {
       // テーブルの状態を更新
       setRefreshKey(prev => prev + 1);
 
-      // 成功通知
+      // 成功通知（リクエスト数を含める）
+      const requestCount = result.data?.requestCount || 1;
       showToast(
-        `${stock.name}(${stock.ticker})の分析をリクエストしました！`,
+        `${stock.name}(${stock.ticker})の分析をリクエストしました！（現在${requestCount}件のリクエスト）人気の銘柄から順次分析します。`,
         'success'
       );
     } catch (error) {
@@ -130,7 +131,7 @@ export default function StocksPage() {
         </div>
 
         {/* フィルター */}
-        <div className="bg-white p-6 rounded-xl border border-surface-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-6 rounded-xl border border-surface-200 shadow-sm">
           <form onSubmit={handleSearch} className="space-y-4">
             {/* 検索ボックス */}
             <div>
@@ -147,11 +148,11 @@ export default function StocksPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="例: トヨタ、7203"
-                  className="flex-1 px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="flex-1 min-w-0 px-3 sm:px-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                 />
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  className="flex-shrink-0 px-4 sm:px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm sm:text-base whitespace-nowrap"
                 >
                   検索
                 </button>
