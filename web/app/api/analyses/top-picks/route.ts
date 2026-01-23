@@ -12,12 +12,15 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     // 最新の分析結果から上位3銘柄を取得
+    // Buy推奨の銘柄のみを対象にする
     const topPicks = await prisma.analysis.findMany({
       where: {
         // 最新の分析のみ（過去7日以内）
         analysisDate: {
           gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         },
+        // Buy推奨のみをおすすめとして表示
+        recommendation: 'Buy',
       },
       include: {
         stock: true,

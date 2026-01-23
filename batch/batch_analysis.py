@@ -210,7 +210,7 @@ def fetch_stock_data(ticker: str, market: str, max_retries: int = 3) -> StockDat
                         row = hist.iloc[idx]
                         stock_data.price_history.append(
                             {
-                                "date": date.strftime("%Y-%m-%d"),
+                                "date": date,  # datetimeオブジェクトのまま保持
                                 "open": float(row["Open"]),
                                 "high": float(row["High"]),
                                 "low": float(row["Low"]),
@@ -522,21 +522,7 @@ def save_price_history_to_db(conn, stock_id: str, stock_data: StockData) -> bool
             execute_values(
                 cur,
                 execute_values_query,
-                [
-                    (
-                        v[0],
-                        v[1],
-                        v[2],
-                        v[3],
-                        v[4],
-                        v[5],
-                        v[6],
-                        v[7],
-                        "NOW()",
-                        "NOW()",
-                    )
-                    for v in values
-                ],
+                values,
                 template="(%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())",
             )
 
