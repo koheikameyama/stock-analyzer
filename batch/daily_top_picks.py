@@ -69,7 +69,7 @@ def get_signal(score: float) -> Dict[str, str]:
 
 def generate_tweet_template(top_picks: List[Dict]) -> str:
     """
-    X投稿用テンプレートを生成
+    X投稿用テンプレートを生成（140文字以内）
 
     Args:
         top_picks: 上位3銘柄の分析結果
@@ -77,30 +77,19 @@ def generate_tweet_template(top_picks: List[Dict]) -> str:
     Returns:
         str: 投稿テンプレート
     """
-    medals = ["🥇", "🥈", "🥉"]
+    # 1位の銘柄のみ紹介（140文字制限）
+    stock = top_picks[0]
+    signal = get_signal(stock['confidence_score'])
 
-    template = "📊 AIが選ぶ本日の注目銘柄\n\n"
+    # シンプルな形式で生成
+    template = f"📊本日の注目銘柄\n🥇{stock['name']}({stock['ticker']})\nスコア{stock['confidence_score']}/100 {signal['icon']}\n👉 {signal['text']}\n\n#日本株 #AI分析"
 
-    for i, stock in enumerate(top_picks):
-        medal = medals[i]
-        signal = get_signal(stock['confidence_score'])
-
-        template += f"{medal} {stock['name']}({stock['ticker']})\n"
-        template += f"スコア: {stock['confidence_score']}/100 {signal['icon']}\n"
-
-        # 理由を短縮（最初の50文字）
-        reason = stock['reason'][:50] + "..." if len(stock['reason']) > 50 else stock['reason']
-        template += f"理由: {reason}\n"
-        template += f"👉 {signal['text']}\n"
-
-        if i < len(top_picks) - 1:
-            template += "\n"
-
-    template += """
-詳細はこちら👇
-https://stock-analyzer.jp/
-
-#日本株 #AI分析 #おすすめ銘柄 #株式投資"""
+    # 140文字以内に収める
+    if len(template) > 140:
+        # 銘柄名が長い場合は切り詰める
+        max_name_len = 10
+        short_name = stock['name'][:max_name_len] if len(stock['name']) > max_name_len else stock['name']
+        template = f"📊本日の注目銘柄\n🥇{short_name}({stock['ticker']})\nスコア{stock['confidence_score']}/100 {signal['icon']}\n#日本株"
 
     return template
 
