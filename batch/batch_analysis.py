@@ -210,7 +210,7 @@ def fetch_stock_data(ticker: str, market: str, max_retries: int = 3) -> StockDat
                         row = hist.iloc[idx]
                         stock_data.price_history.append(
                             {
-                                "date": date.strftime("%Y-%m-%d"),
+                                "date": date,  # datetimeオブジェクトのまま保持
                                 "open": float(row["Open"]),
                                 "high": float(row["High"]),
                                 "low": float(row["Low"]),
