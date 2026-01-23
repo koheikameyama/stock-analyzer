@@ -16,11 +16,11 @@ from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 
 # .env読み込み
-env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
 load_dotenv(env_path)
 
-DATABASE_URL = os.getenv('DATABASE_URL')
-SLACK_WEBHOOK_URL = os.getenv('SLACK_WEBHOOK_URL')
+DATABASE_URL = os.getenv("DATABASE_URL")
+SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 
 
 def get_top_picks(conn) -> List[Dict]:
@@ -69,7 +69,7 @@ def get_signal(score: float) -> Dict[str, str]:
 
 def generate_tweet_template(top_picks: List[Dict]) -> str:
     """
-    X投稿用テンプレートを生成
+    X投稿用テンプレートを生成（140文字以内）
 
     Args:
         top_picks: 上位3銘柄の分析結果
@@ -77,30 +77,40 @@ def generate_tweet_template(top_picks: List[Dict]) -> str:
     Returns:
         str: 投稿テンプレート
     """
+    # 上位3銘柄を紹介（理由なし、140文字制限）
     medals = ["🥇", "🥈", "🥉"]
+    lines = ["📊本日の注目銘柄"]
 
-    template = "📊 AIが選ぶ本日の注目銘柄\n\n"
+    for i, stock in enumerate(top_picks[:3]):
+        signal = get_signal(stock["confidence_score"])
+        line = (
+            f"{medals[i]}{stock['name']}({stock['ticker']}) "
+            f"{stock['confidence_score']}/100 {signal['icon']}"
+        )
+        lines.append(line)
 
-    for i, stock in enumerate(top_picks):
-        medal = medals[i]
-        signal = get_signal(stock['confidence_score'])
+    lines.append("\n#日本株 #AI分析")
+    template = "\n".join(lines)
 
-        template += f"{medal} {stock['name']}({stock['ticker']})\n"
-        template += f"スコア: {stock['confidence_score']}/100 {signal['icon']}\n"
-
-        # 理由を短縮（最初の50文字）
-        reason = stock['reason'][:50] + "..." if len(stock['reason']) > 50 else stock['reason']
-        template += f"理由: {reason}\n"
-        template += f"👉 {signal['text']}\n"
-
-        if i < len(top_picks) - 1:
-            template += "\n"
-
-    template += """
-詳細はこちら👇
-https://stock-analyzer.jp/
-
-#日本株 #AI分析 #おすすめ銘柄 #株式投資"""
+    # 140文字以内に収める
+    if len(template) > 140:
+        # 銘柄名を短縮
+        lines = ["📊本日の注目銘柄"]
+        for i, stock in enumerate(top_picks[:3]):
+            signal = get_signal(stock["confidence_score"])
+            max_name_len = 8
+            short_name = (
+                stock["name"][:max_name_len]
+                if len(stock["name"]) > max_name_len
+                else stock["name"]
+            )
+            line = (
+                f"{medals[i]}{short_name}({stock['ticker']}) "
+                f"{stock['confidence_score']}/100 {signal['icon']}"
+            )
+            lines.append(line)
+        lines.append("\n#日本株")
+        template = "\n".join(lines)
 
     return template
 
@@ -113,18 +123,21 @@ def send_to_slack(webhook_url: str, message: str):
         webhook_url: Slack Webhook URL
         message: 送信するメッセージ
     """
-    now = datetime.now().strftime('%H:%M')
+    now = datetime.now().strftime("%H:%M")
 
     payload = {
-        "text": f"📢 *毎日投稿テンプレート（{now}配信）*\n\n以下をコピーしてXに投稿してください👇\n\n```\n{message}\n```",
+        "text": (
+            f"📢 *毎日投稿テンプレート（{now}配信）*\n\n"
+            f"以下をコピーしてXに投稿してください👇\n\n```\n{message}\n```"
+        ),
         "username": "Stock Analyzer Bot",
-        "icon_emoji": ":chart_with_upwards_trend:"
+        "icon_emoji": ":chart_with_upwards_trend:",
     }
 
     response = requests.post(
         webhook_url,
         data=json.dumps(payload),
-        headers={'Content-Type': 'application/json'}
+        headers={"Content-Type": "application/json"},
     )
 
     if response.status_code == 200:
@@ -175,6 +188,7 @@ def main():
     except Exception as e:
         print(f"\n❌ エラーが発生しました: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 
