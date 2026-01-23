@@ -73,7 +73,7 @@ jobs:
           message = "おはようございます☀️\n\n【今朝の日本株】\n日経平均: (手動更新)\nTOPIX: (手動更新)\n\n米国市場の影響で(手動更新)の見込み。\n今日は(手動更新)セクターに注目📊\n\n#日本株 #株式投資 #朝の市況"
 
           payload = {
-              'text': '📢 *朝の投稿テンプレート*\n\n以下をコピーしてXに投稿してください👇\n\n```\n' + message + '\n```',
+              'text': '📢 *朝の投稿テンプレート*\n\n以下をコピーしてXに投稿してください👇\n\n' + message,
               'username': 'Stock Analyzer Bot',
               'icon_emoji': ':chart_with_upwards_trend:'
           }
@@ -110,7 +110,7 @@ jobs:
           message = "本日の相場まとめ📝\n\n日経平均: (手動更新)\n値上がり: (手動更新)銘柄\n値下がり: (手動更新)銘柄\n\n✅ (手動更新)セクターが堅調\n⚠️ (手動更新)は軟調\n\n明日も引き続き注目です💹\n\n#日本株 #相場振り返り #株式投資"
 
           payload = {
-              'text': '📢 *夜の投稿テンプレート*\n\n以下をコピーしてXに投稿してください👇\n\n```\n' + message + '\n```',
+              'text': '📢 *夜の投稿テンプレート*\n\n以下をコピーしてXに投稿してください👇\n\n' + message,
               'username': 'Stock Analyzer Bot',
               'icon_emoji': ':chart_with_upwards_trend:'
           }
