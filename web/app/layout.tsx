@@ -10,6 +10,7 @@ import { InstallPrompt } from '@/components/InstallPrompt';
 import { Analytics } from '@/components/Analytics';
 import { ReleaseNoteModal } from '@/components/ReleaseNoteModal';
 import { PushNotificationPromptModal } from '@/components/PushNotificationPromptModal';
+import { StructuredData } from '@/components/StructuredData';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -42,23 +43,23 @@ export const metadata: Metadata = {
     url: 'https://stock-analyzer.jp/',
     siteName: 'AI株式分析ツール',
     title: 'AI株式分析ツール - 日本株の投資判断を毎日AIが分析',
-    description: 'AIが日本株の主要15銘柄を毎日自動分析。投資判断（Buy/Hold/Sell）を詳細な根拠付きで提供します。',
+    description: 'AIが日本株の主要15銘柄を毎日自動分析。投資判断（Buy/Hold/Sell）を詳細な根拠付きで提供します。初心者にもわかりやすい無料の株式分析サービス。',
     images: [
       {
-        url: 'https://stock-analyzer.jp/icon.png',
-        width: 512,
-        height: 512,
-        alt: 'AI株式分析ツール',
+        url: 'https://stock-analyzer.jp/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'AI株式分析ツール - 日本株の投資判断を毎日AIが分析',
       },
     ],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     site: '@stockAnalyzerJP',
     creator: '@stockAnalyzerJP',
     title: 'AI株式分析ツール - 日本株の投資判断を毎日AIが分析',
-    description: 'AIが日本株の主要15銘柄を毎日自動分析。投資判断を詳細な根拠付きで提供します。',
-    images: ['https://stock-analyzer.jp/icon.png'],
+    description: 'AIが日本株の主要15銘柄を毎日自動分析。投資判断を詳細な根拠付きで提供します。初心者にもわかりやすい無料の株式分析サービス。',
+    images: ['https://stock-analyzer.jp/og-image.png'],
   },
   robots: {
     index: true,
@@ -81,6 +82,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja" className={`${inter.variable} ${outfit.variable}`}>
+      <head>
+        <StructuredData />
+      </head>
       <body className={inter.className}>
         <Analytics />
         <Providers>{children}</Providers>
