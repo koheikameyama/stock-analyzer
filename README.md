@@ -291,6 +291,21 @@ develop (開発・デフォルトブランチ)
    - mainにpush → Railwayが自動デプロイ
    - 緊急時は手動でワークフロー実行可能
 
+#### batch/のみの変更時のリリース作成
+
+**重要**: `batch/`のみの変更の場合、`create-release.yml`は自動実行されません。
+
+- **web/の変更あり** → Railwayデプロイ → `create-release.yml`自動実行
+- **batch/のみの変更** → Railwayデプロイなし → `create-release.yml`は自動実行されない
+
+**リリースを作成したい場合:**
+
+1. develop→mainのPRをマージ
+2. GitHub Actionsで`create-release.yml`を手動実行
+   - Actions → "Create Release" → "Run workflow" → ブランチ: main → "Run workflow"
+
+これにより、batch/のみの変更でも`version:patch`ラベル付きのPRがあればリリースが作成されます。
+
 ### コード規約
 
 - ESLint設定に従う
