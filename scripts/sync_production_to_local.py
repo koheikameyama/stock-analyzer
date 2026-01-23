@@ -20,13 +20,13 @@ class Colors:
 def print_color(color, message):
     print(f"{color}{message}{Colors.NC}")
 
-# 本番DBの接続情報
+# 本番DBの接続情報（Railway）
 PROD_CONN = {
-    'host': 'aws-1-ap-northeast-1.pooler.supabase.com',
-    'port': 6543,
-    'user': 'postgres.pphsmthcjzksbfnzflsw',
-    'password': 'hwS$3-S$JMV+S$y',
-    'database': 'postgres'
+    'host': 'ballast.proxy.rlwy.net',
+    'port': 35578,
+    'user': 'postgres',
+    'password': 'GwCPWDSPDiftoZZoapgtVFrzXpGotrjZ',
+    'database': 'railway'
 }
 
 # ローカルDBの接続情報
