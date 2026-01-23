@@ -90,6 +90,7 @@ def generate_tweet_template(top_picks: List[Dict]) -> str:
         lines.append(line)
 
     lines.append("\n#日本株 #AI分析")
+    lines.append("\nhttps://stock-analyzer.jp/")
     template = "\n".join(lines)
 
     # 140文字以内に収める
@@ -110,6 +111,7 @@ def generate_tweet_template(top_picks: List[Dict]) -> str:
             )
             lines.append(line)
         lines.append("\n#日本株")
+        lines.append("\nhttps://stock-analyzer.jp/")
         template = "\n".join(lines)
 
     return template
