@@ -131,3 +131,36 @@ def test_analyze_trend_rsi_oversold():
     result = analyze_trend(indicators)
 
     assert result["rsi_signal"] == "売られすぎ"
+
+
+def test_calculate_trend_indicators_empty_data():
+    """異常系: 空データでValueError"""
+    from technical_analysis import calculate_trend_indicators
+    import pytest
+
+    with pytest.raises(ValueError, match="データ不足"):
+        calculate_trend_indicators([])
+
+
+def test_calculate_trend_indicators_insufficient_data():
+    """異常系: 25日未満でValueError"""
+    from technical_analysis import calculate_trend_indicators
+    import pytest
+
+    # 10日分のデータ
+    base_date = datetime(2026, 1, 1)
+    data = []
+    for i in range(10):
+        data.append(
+            {
+                "date": base_date + timedelta(days=i),
+                "close": 1000 + i * 10,
+                "open": 990 + i * 10,
+                "high": 1010 + i * 10,
+                "low": 980 + i * 10,
+                "volume": 1000000,
+            }
+        )
+
+    with pytest.raises(ValueError, match="最低25日必要"):
+        calculate_trend_indicators(data)
