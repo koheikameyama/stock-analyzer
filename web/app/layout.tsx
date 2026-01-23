@@ -11,6 +11,7 @@ import { Analytics } from '@/components/Analytics';
 import { ReleaseNoteModal } from '@/components/ReleaseNoteModal';
 import { PushNotificationPromptModal } from '@/components/PushNotificationPromptModal';
 import { StructuredData } from '@/components/StructuredData';
+import { AdSenseScript } from '@/components/AdSenseScript';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -84,6 +85,7 @@ export default function RootLayout({
     <html lang="ja" className={`${inter.variable} ${outfit.variable}`}>
       <head>
         <StructuredData />
+        <AdSenseScript />
       </head>
       <body className={inter.className}>
         <Analytics />
