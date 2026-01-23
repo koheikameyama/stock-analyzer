@@ -13,7 +13,6 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, Dict, Any, List
 from collections import deque
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 import json
 from zoneinfo import ZoneInfo
@@ -23,28 +22,29 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 from openai import OpenAI
-from datetime import timezone
+from technical_analysis import calculate_trend_indicators, analyze_trend
 
 # プロジェクトルートからの.envファイル読み込み
-env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
 load_dotenv(env_path)
 
 # 環境変数
-DATABASE_URL = os.getenv('DATABASE_URL')
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+DATABASE_URL = os.getenv("DATABASE_URL")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # OpenAIクライアント初期化
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 # OpenAI API料金（gpt-4o-mini）
 PRICING = {
-    'input_per_1m_tokens': 0.150,  # $0.150 / 1M tokens
-    'output_per_1m_tokens': 0.600,  # $0.600 / 1M tokens
+    "input_per_1m_tokens": 0.150,  # $0.150 / 1M tokens
+    "output_per_1m_tokens": 0.600,  # $0.600 / 1M tokens
 }
 
 
 class APIUsageTracker:
     """OpenAI API使用量トラッカー（スレッドセーフ）"""
+
     def __init__(self):
         self.total_input_tokens = 0
         self.total_output_tokens = 0
@@ -60,15 +60,23 @@ class APIUsageTracker:
 
     def get_cost(self) -> float:
         """総費用を計算（USD）"""
-        input_cost = (self.total_input_tokens / 1_000_000) * PRICING['input_per_1m_tokens']
-        output_cost = (self.total_output_tokens / 1_000_000) * PRICING['output_per_1m_tokens']
+        input_cost = (self.total_input_tokens / 1_000_000) * PRICING[
+            "input_per_1m_tokens"
+        ]
+        output_cost = (self.total_output_tokens / 1_000_000) * PRICING[
+            "output_per_1m_tokens"
+        ]
         return input_cost + output_cost
 
     def print_summary(self):
         """費用サマリーを表示"""
         with self.lock:
-            input_cost = (self.total_input_tokens / 1_000_000) * PRICING['input_per_1m_tokens']
-            output_cost = (self.total_output_tokens / 1_000_000) * PRICING['output_per_1m_tokens']
+            input_cost = (self.total_input_tokens / 1_000_000) * PRICING[
+                "input_per_1m_tokens"
+            ]
+            output_cost = (self.total_output_tokens / 1_000_000) * PRICING[
+                "output_per_1m_tokens"
+            ]
             total_cost = input_cost + output_cost
 
             print("\n" + "=" * 50)
@@ -85,6 +93,7 @@ class APIUsageTracker:
 
 class StockQueue:
     """株式分析キュー管理（スレッドセーフ）"""
+
     def __init__(self, stocks: List[Dict[str, Any]]):
         self.queue = deque(stocks)
         self.total = len(stocks)
@@ -115,7 +124,10 @@ class StockQueue:
     def get_progress(self) -> str:
         """進捗状況を取得"""
         with self.lock:
-            return f"[{self.processed}/{self.total}] 成功:{self.success} 失敗:{self.failed}"
+            return (
+                f"[{self.processed}/{self.total}] "
+                f"成功:{self.success} 失敗:{self.failed}"
+            )
 
     def is_empty(self) -> bool:
         """キューが空か確認"""
@@ -129,6 +141,7 @@ usage_tracker = APIUsageTracker()
 
 class StockData:
     """株式データクラス"""
+
     def __init__(self, ticker: str, market: str):
         self.ticker = ticker
         self.market = market
@@ -170,33 +183,41 @@ def fetch_stock_data(ticker: str, market: str, max_retries: int = 3) -> StockDat
             info = stock.info
 
             # 基本情報
-            stock_data.company_name = info.get('longName', ticker)
-            stock_data.sector = info.get('sector', 'Unknown')
+            stock_data.company_name = info.get("longName", ticker)
+            stock_data.sector = info.get("sector", "Unknown")
 
             # 株価データ
-            stock_data.current_price = Decimal(str(info.get('currentPrice', 0)))
+            stock_data.current_price = Decimal(str(info.get("currentPrice", 0)))
 
             # 財務指標
-            stock_data.pe_ratio = Decimal(str(info.get('trailingPE', 0))) if info.get('trailingPE') else None
-            stock_data.pb_ratio = Decimal(str(info.get('priceToBook', 0))) if info.get('priceToBook') else None
-            stock_data.roe = Decimal(str(info.get('returnOnEquity', 0) * 100)) if info.get('returnOnEquity') else None
-            stock_data.dividend_yield = Decimal(str(info.get('dividendYield', 0) * 100)) if info.get('dividendYield') else None
+            pe = info.get("trailingPE")
+            stock_data.pe_ratio = Decimal(str(pe)) if pe else None
+            pb = info.get("priceToBook")
+            stock_data.pb_ratio = Decimal(str(pb)) if pb else None
+            roe = info.get("returnOnEquity")
+            stock_data.roe = Decimal(str(roe * 100)) if roe else None
+            div_yield = info.get("dividendYield")
+            stock_data.dividend_yield = (
+                Decimal(str(div_yield * 100)) if div_yield else None
+            )
 
-            # 過去30日の株価履歴を取得
+            # 過去90日の株価履歴を取得（トレンド分析に必要）
             try:
-                hist = stock.history(period="1mo")
+                hist = stock.history(period="3mo")
                 if not hist.empty:
                     for idx in range(len(hist)):
                         date = hist.index[idx]
                         row = hist.iloc[idx]
-                        stock_data.price_history.append({
-                            'date': date.strftime('%Y-%m-%d'),
-                            'open': float(row['Open']),
-                            'high': float(row['High']),
-                            'low': float(row['Low']),
-                            'close': float(row['Close']),
-                            'volume': int(row['Volume'])
-                        })
+                        stock_data.price_history.append(
+                            {
+                                "date": date.strftime("%Y-%m-%d"),
+                                "open": float(row["Open"]),
+                                "high": float(row["High"]),
+                                "low": float(row["Low"]),
+                                "close": float(row["Close"]),
+                                "volume": int(row["Volume"]),
+                            }
+                        )
             except Exception:
                 pass  # 履歴取得失敗は致命的ではないので続行
 
@@ -206,7 +227,7 @@ def fetch_stock_data(ticker: str, market: str, max_retries: int = 3) -> StockDat
 
         except Exception as e:
             error_msg = str(e)
-            
+
             # リトライ上限到達
             if attempt == max_retries:
                 stock_data.error = f"データ取得失敗: {error_msg}"
@@ -214,9 +235,13 @@ def fetch_stock_data(ticker: str, market: str, max_retries: int = 3) -> StockDat
 
             # 429エラーなどの場合は長めに待機
             wait_time = (attempt + 1) * 5  # 5秒, 10秒, 15秒...
-            print(f"⚠️ {ticker}: データ取得エラー (リトライ {attempt+1}/{max_retries} - {wait_time}秒待機): {error_msg}")
+            print(
+                f"⚠️ {ticker}: データ取得エラー "
+                f"(リトライ {attempt+1}/{max_retries} - "
+                f"{wait_time}秒待機): {error_msg}"
+            )
             time.sleep(wait_time)
-    
+
     return stock_data
 
 
@@ -231,6 +256,31 @@ def analyze_with_openai(stock_data: StockData, max_retries: int = 2) -> Dict[str
     Returns:
         Dict: AI分析結果
     """
+    # トレンド分析セクションを準備（株価履歴が25日以上ある場合のみ）
+    trend_section = ""
+    if len(stock_data.price_history) >= 25:
+        try:
+            # テクニカル指標を計算
+            indicators = calculate_trend_indicators(stock_data.price_history)
+            trend_info = analyze_trend(indicators)
+
+            # プロンプトに追加するトレンド情報
+            currency = "円" if stock_data.market == "JP" else "ドル"
+            trend_section = f"""
+【株価トレンド分析】
+- トレンド: {trend_info['trend']}
+- 5日移動平均: {trend_info['sma_5']}{currency}
+- 25日移動平均: {trend_info['sma_25']}{currency}
+- RSI(14日): {trend_info['rsi']} ({trend_info['rsi_signal']})
+- シグナル: {', '.join(trend_info['signals'])}
+"""
+            print(
+                f"   📊 トレンド: {trend_info['trend']}, " f"RSI: {trend_info['rsi']}"
+            )
+        except Exception as e:
+            # トレンド分析失敗時は既存の分析にフォールバック
+            print(f"   ⚠️ トレンド分析エラー（スキップ）: " f"{str(e)[:50]}")
+
     # プロンプト作成
     prompt = f"""
 あなたは初心者投資家向けのAI投資アドバイザーです。
@@ -245,13 +295,17 @@ def analyze_with_openai(stock_data: StockData, max_retries: int = 2) -> Dict[str
 - PER: {stock_data.pe_ratio if stock_data.pe_ratio else 'N/A'}
 - PBR: {stock_data.pb_ratio if stock_data.pb_ratio else 'N/A'}
 - ROE: {stock_data.roe if stock_data.roe else 'N/A'}%
-- 配当利回り: {float(stock_data.dividend_yield) / 100 if stock_data.dividend_yield else 'N/A'}%
-
+- 配当利回り: {
+    float(stock_data.dividend_yield) / 100
+    if stock_data.dividend_yield else 'N/A'
+}%
+{trend_section}
 以下のJSON形式で回答してください：
 {{
   "recommendation": "Buy" | "Sell" | "Hold",
   "confidence_score": 0-100の整数,
-  "reason": "推奨理由を300文字程度で記述。財務指標の評価、業績動向、投資判断の根拠を含める。"
+  "reason": "推奨理由を300文字程度で記述。"
+  "財務指標の評価、業績動向、投資判断の根拠を含める。"
 }}
 """
 
@@ -259,21 +313,25 @@ def analyze_with_openai(stock_data: StockData, max_retries: int = 2) -> Dict[str
     for attempt in range(max_retries + 1):  # 初回 + リトライ2回 = 最大3回
         try:
             # OpenAI APIリクエスト
+            sys_msg = (
+                "あなたは初心者投資家向けのAI投資アドバイザーです。"
+                "JSON形式で回答してください。"
+            )
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "あなたは初心者投資家向けのAI投資アドバイザーです。JSON形式で回答してください。"},
-                    {"role": "user", "content": prompt}
+                    {"role": "system", "content": sys_msg},
+                    {"role": "user", "content": prompt},
                 ],
                 response_format={"type": "json_object"},
-                timeout=30
+                timeout=30,
             )
 
             # 使用量を追跡
             if response.usage:
                 usage_tracker.add_usage(
                     response.usage.prompt_tokens,
-                    response.usage.completion_tokens
+                    response.usage.completion_tokens,
                 )
 
             # レスポンス解析
@@ -290,15 +348,17 @@ def analyze_with_openai(stock_data: StockData, max_retries: int = 2) -> Dict[str
                 return {
                     "recommendation": "Hold",
                     "confidence_score": 0,
-                    "reason": f"AI分析中にエラーが発生しました: {error_msg}"
+                    "reason": (f"AI分析中にエラーが発生しました: {error_msg}"),
                 }
 
             # リトライ前に遅延（エクスポネンシャルバックオフ: 1秒、2秒）
-            delay = 2 ** attempt  # 1秒、2秒
+            delay = 2**attempt  # 1秒、2秒
             time.sleep(delay)
 
 
-def save_analysis_to_db(conn, stock_id: str, stock_data: StockData, analysis: Dict[str, Any]) -> bool:
+def save_analysis_to_db(
+    conn, stock_id: str, stock_data: StockData, analysis: Dict[str, Any]
+) -> bool:
     """
     分析結果をデータベースに保存（既存データがあれば更新）
 
@@ -317,15 +377,19 @@ def save_analysis_to_db(conn, stock_id: str, stock_data: StockData, analysis: Di
             now = datetime.now(timezone.utc)
 
             # 既存の分析データを確認
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT id FROM analyses WHERE stock_id = %s LIMIT 1
-            """, (stock_id,))
+                """,
+                (stock_id,),
+            )
 
             existing = cur.fetchone()
 
             if existing:
                 # 既存データを更新
-                cur.execute("""
+                cur.execute(
+                    """
                     UPDATE analyses SET
                         analysis_date = %s,
                         recommendation = %s,
@@ -338,23 +402,26 @@ def save_analysis_to_db(conn, stock_id: str, stock_data: StockData, analysis: Di
                         dividend_yield = %s,
                         updated_at = %s
                     WHERE id = %s
-                """, (
-                    now,
-                    analysis['recommendation'],
-                    analysis['confidence_score'],
-                    analysis['reason'],
-                    stock_data.current_price,
-                    stock_data.pe_ratio,
-                    stock_data.pb_ratio,
-                    stock_data.roe,
-                    stock_data.dividend_yield,
-                    now,
-                    existing[0]  # タプルなのでインデックスでアクセス
-                ))
+                """,
+                    (
+                        now,
+                        analysis["recommendation"],
+                        analysis["confidence_score"],
+                        analysis["reason"],
+                        stock_data.current_price,
+                        stock_data.pe_ratio,
+                        stock_data.pb_ratio,
+                        stock_data.roe,
+                        stock_data.dividend_yield,
+                        now,
+                        existing[0],  # タプルなのでインデックスでアクセス
+                    ),
+                )
             else:
                 # 新規作成
                 analysis_id = str(uuid.uuid4())
-                cur.execute("""
+                cur.execute(
+                    """
                     INSERT INTO analyses (
                         id,
                         stock_id,
@@ -369,22 +436,27 @@ def save_analysis_to_db(conn, stock_id: str, stock_data: StockData, analysis: Di
                         dividend_yield,
                         created_at,
                         updated_at
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (
-                    analysis_id,
-                    stock_id,
-                    now,
-                    analysis['recommendation'],
-                    analysis['confidence_score'],
-                    analysis['reason'],
-                    stock_data.current_price,
-                    stock_data.pe_ratio,
-                    stock_data.pb_ratio,
-                    stock_data.roe,
-                    stock_data.dividend_yield,
-                    now,
-                    now
-                ))
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s
+                    )
+                """,
+                    (
+                        analysis_id,
+                        stock_id,
+                        now,
+                        analysis["recommendation"],
+                        analysis["confidence_score"],
+                        analysis["reason"],
+                        stock_data.current_price,
+                        stock_data.pe_ratio,
+                        stock_data.pb_ratio,
+                        stock_data.roe,
+                        stock_data.dividend_yield,
+                        now,
+                        now,
+                    ),
+                )
 
         conn.commit()
         return True
@@ -413,25 +485,30 @@ def save_price_history_to_db(conn, stock_id: str, stock_data: StockData) -> bool
 
         with conn.cursor() as cur:
             # まず該当日付の既存データを削除
-            dates = [p['date'] for p in stock_data.price_history]
-            cur.execute("""
+            dates = [p["date"] for p in stock_data.price_history]
+            cur.execute(
+                """
                 DELETE FROM price_history
                 WHERE stock_id = %s AND date = ANY(%s)
-            """, (stock_id, dates))
+            """,
+                (stock_id, dates),
+            )
 
             # 一括挿入用のデータを準備
             values = []
             for price_data in stock_data.price_history:
-                values.append((
-                    str(uuid.uuid4()),  # id
-                    stock_id,
-                    price_data['date'],
-                    price_data['open'],
-                    price_data['high'],
-                    price_data['low'],
-                    price_data['close'],
-                    price_data['volume']
-                ))
+                values.append(
+                    (
+                        str(uuid.uuid4()),  # id
+                        stock_id,
+                        price_data["date"],
+                        price_data["open"],
+                        price_data["high"],
+                        price_data["low"],
+                        price_data["close"],
+                        price_data["volume"],
+                    )
+                )
 
             # 一括挿入（1クエリ）
             execute_values_query = """
@@ -441,11 +518,26 @@ def save_price_history_to_db(conn, stock_id: str, stock_data: StockData) -> bool
                 ) VALUES %s
             """
             from psycopg2.extras import execute_values
+
             execute_values(
                 cur,
                 execute_values_query,
-                [(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], 'NOW()', 'NOW()') for v in values],
-                template="(%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())"
+                [
+                    (
+                        v[0],
+                        v[1],
+                        v[2],
+                        v[3],
+                        v[4],
+                        v[5],
+                        v[6],
+                        v[7],
+                        "NOW()",
+                        "NOW()",
+                    )
+                    for v in values
+                ],
+                template="(%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())",
             )
 
         conn.commit()
@@ -469,7 +561,7 @@ def process_single_stock(stock: Dict[str, Any], force: bool = False) -> bool:
         bool: 処理が成功したかどうか
     """
     conn = None
-    ticker = stock['ticker']
+    ticker = stock["ticker"]
 
     try:
         # データベース接続
@@ -478,15 +570,22 @@ def process_single_stock(stock: Dict[str, Any], force: bool = False) -> bool:
         # 今日の日付を取得（日本時間、日付のみ）
         today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
 
-        # 今日の分析データが既に存在するかチェック（forceフラグがfalseの場合のみ）
+        # forceフラグがfalseの場合のみ、
+        # 今日の分析データが既に存在するかチェック
         if not force:
             with conn.cursor() as cur:
-                # analysisDateはUTC保存なので、日本時間に変換して日付比較
-                cur.execute("""
+                # analysisDateはUTC保存なので、
+                # 日本時間に変換して日付比較
+                cur.execute(
+                    """
                     SELECT id FROM analyses
                     WHERE stock_id = %s
-                    AND DATE(analysis_date AT TIME ZONE 'Asia/Tokyo') = %s
-                """, (stock['id'], today))
+                    AND DATE(
+                        analysis_date AT TIME ZONE 'Asia/Tokyo'
+                    ) = %s
+                    """,
+                    (stock["id"], today),
+                )
                 existing_today = cur.fetchone()
 
             if existing_today:
@@ -499,7 +598,7 @@ def process_single_stock(stock: Dict[str, Any], force: bool = False) -> bool:
             print(f"🔄 {ticker}: 処理開始...")
 
         # 株価データ取得
-        stock_data = fetch_stock_data(ticker, stock['market'])
+        stock_data = fetch_stock_data(ticker, stock["market"])
 
         if stock_data.error or stock_data.current_price == 0:
             print(f"⚠️  {ticker}: データ取得失敗")
@@ -509,10 +608,13 @@ def process_single_stock(stock: Dict[str, Any], force: bool = False) -> bool:
         analysis = analyze_with_openai(stock_data)
 
         # データベースに保存
-        if save_analysis_to_db(conn, stock['id'], stock_data, analysis):
+        if save_analysis_to_db(conn, stock["id"], stock_data, analysis):
             # 株価履歴も保存
-            save_price_history_to_db(conn, stock['id'], stock_data)
-            print(f"✅ {ticker}: {analysis['recommendation']} ({analysis['confidence_score']}%) 完了")
+            save_price_history_to_db(conn, stock["id"], stock_data)
+            print(
+                f"✅ {ticker}: {analysis['recommendation']} "
+                f"({analysis['confidence_score']}%) 完了"
+            )
             return True
         else:
             print(f"❌ {ticker}: DB保存失敗")
@@ -526,8 +628,14 @@ def process_single_stock(stock: Dict[str, Any], force: bool = False) -> bool:
             conn.close()
 
 
-def log_batch_job(conn, start_time: datetime, total_stocks: int, success_count: int,
-                  failure_count: int, error_message: Optional[str] = None):
+def log_batch_job(
+    conn,
+    start_time: datetime,
+    total_stocks: int,
+    success_count: int,
+    failure_count: int,
+    error_message: Optional[str] = None,
+):
     """
     バッチジョブログを記録
 
@@ -543,11 +651,11 @@ def log_batch_job(conn, start_time: datetime, total_stocks: int, success_count: 
         duration = int((datetime.now() - start_time).total_seconds() * 1000)
 
         if success_count == total_stocks:
-            status = 'success'
+            status = "success"
         elif success_count > 0:
-            status = 'partial_success'
+            status = "partial_success"
         else:
-            status = 'failure'
+            status = "failure"
 
         with conn.cursor() as cur:
             # UUID生成
@@ -555,7 +663,8 @@ def log_batch_job(conn, start_time: datetime, total_stocks: int, success_count: 
             # UTC時刻を取得（フロントエンドで日本時間に変換）
             now = datetime.now(timezone.utc)
 
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO batch_job_logs (
                     id,
                     job_date,
@@ -567,17 +676,19 @@ def log_batch_job(conn, start_time: datetime, total_stocks: int, success_count: 
                     duration,
                     created_at
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                log_id,
-                start_time,
-                status,
-                total_stocks,
-                success_count,
-                failure_count,
-                error_message,
-                duration,
-                now
-            ))
+            """,
+                (
+                    log_id,
+                    start_time,
+                    status,
+                    total_stocks,
+                    success_count,
+                    failure_count,
+                    error_message,
+                    duration,
+                    now,
+                ),
+            )
 
         conn.commit()
         print("📝 バッチジョブログを記録しました")
@@ -590,9 +701,11 @@ def log_batch_job(conn, start_time: datetime, total_stocks: int, success_count: 
 def main():
     """メイン処理"""
     # コマンドライン引数の解析
-    parser = argparse.ArgumentParser(description='AI株式分析バッチ処理')
-    parser.add_argument('--force', action='store_true',
-                        help='既存データを無視して強制的に再実行')
+    parser = argparse.ArgumentParser(description="AI株式分析バッチ処理")
+    parser.add_argument(
+        "--force", action="store_true", help="既存データを無視して強制的に再実行"
+    )
+    parser.add_argument("--limit", type=int, help="処理する銘柄数の上限")
     args = parser.parse_args()
 
     start_time = datetime.now()
@@ -616,20 +729,27 @@ def main():
 
         # 銘柄リストを取得（is_ai_analysis_target=trueのみ）
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute('''
+            cur.execute("""
                 SELECT id, ticker, market
                 FROM stocks
                 WHERE is_ai_analysis_target = true
                 ORDER BY ticker
-            ''')
+            """)
             stocks = cur.fetchall()
+
+        # --limitオプションが指定されている場合は制限
+        if args.limit:
+            stocks = stocks[: args.limit]
+            print(f"⚡ 処理制限: 最初の{args.limit}件のみ\n")
 
         total_stocks = len(stocks)
         print(f"📋 分析対象銘柄数: {total_stocks}件\n")
 
         if total_stocks == 0:
             print("⚠️ 分析対象の銘柄が見つかりませんでした")
-            log_batch_job(conn, start_time, 0, 0, 0, "分析対象の銘柄が見つかりませんでした")
+            log_batch_job(
+                conn, start_time, 0, 0, 0, "分析対象の銘柄が見つかりませんでした"
+            )
             return
 
         # 順次処理
@@ -647,8 +767,17 @@ def main():
                 time.sleep(1)
 
         # バッチジョブログを記録
-        error_message = f"{failure_count}件の銘柄分析に失敗しました" if failure_count > 0 else None
-        log_batch_job(conn, start_time, total_stocks, success_count, failure_count, error_message)
+        error_message = (
+            f"{failure_count}件の銘柄分析に失敗しました" if failure_count > 0 else None
+        )
+        log_batch_job(
+            conn,
+            start_time,
+            total_stocks,
+            success_count,
+            failure_count,
+            error_message,
+        )
 
     except Exception as e:
         print(f"\n❌ バッチジョブでエラーが発生しました: {e}")
