@@ -62,30 +62,11 @@ jobs:
       - name: Generate morning post (市況サマリー)
         if: steps.post_type.outputs.type == 'morning'
         env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           cd batch
-          python3 << 'PYTHON_SCRIPT'
-          import os
-          import requests
-          import json
-
-          message = "おはようございます☀️\n\n【今朝の日本株】\n日経平均: (手動更新)\nTOPIX: (手動更新)\n\n米国市場の影響で(手動更新)の見込み。\n今日は(手動更新)セクターに注目📊\n\n#日本株 #株式投資 #朝の市況"
-
-          payload = {
-              'text': '📢 *朝の投稿テンプレート*\n\n以下をコピーしてXに投稿してください👇\n\n' + message,
-              'username': 'Stock Analyzer Bot',
-              'icon_emoji': ':chart_with_upwards_trend:'
-          }
-
-          response = requests.post(
-              os.getenv('SLACK_WEBHOOK_URL'),
-              data=json.dumps(payload),
-              headers={'Content-Type': 'application/json'}
-          )
-
-          print('✅ Slackへの送信成功' if response.status_code == 200 else f'❌ 失敗: {response.status_code}')
-          PYTHON_SCRIPT
+          python generate_market_summary.py morning
 
       - name: Generate noon post (おすすめ銘柄)
         if: steps.post_type.outputs.type == 'noon'
@@ -99,27 +80,8 @@ jobs:
       - name: Generate evening post (市況振り返り)
         if: steps.post_type.outputs.type == 'evening'
         env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           cd batch
-          python3 << 'PYTHON_SCRIPT'
-          import os
-          import requests
-          import json
-
-          message = "本日の相場まとめ📝\n\n日経平均: (手動更新)\n値上がり: (手動更新)銘柄\n値下がり: (手動更新)銘柄\n\n✅ (手動更新)セクターが堅調\n⚠️ (手動更新)は軟調\n\n明日も引き続き注目です💹\n\n#日本株 #相場振り返り #株式投資"
-
-          payload = {
-              'text': '📢 *夜の投稿テンプレート*\n\n以下をコピーしてXに投稿してください👇\n\n' + message,
-              'username': 'Stock Analyzer Bot',
-              'icon_emoji': ':chart_with_upwards_trend:'
-          }
-
-          response = requests.post(
-              os.getenv('SLACK_WEBHOOK_URL'),
-              data=json.dumps(payload),
-              headers={'Content-Type': 'application/json'}
-          )
-
-          print('✅ Slackへの送信成功' if response.status_code == 200 else f'❌ 失敗: {response.status_code}')
-          PYTHON_SCRIPT
+          python generate_market_summary.py evening
