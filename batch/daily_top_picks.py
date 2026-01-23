@@ -95,11 +95,11 @@ def generate_tweet_template(top_picks: List[Dict]) -> str:
 
     # 140文字以内に収める
     if len(template) > 140:
-        # 銘柄名を短縮
+        # 銘柄名を短縮してハッシュタグも削減
         lines = ["📊本日の注目銘柄"]
         for i, stock in enumerate(top_picks[:3]):
             signal = get_signal(stock["confidence_score"])
-            max_name_len = 8
+            max_name_len = 6
             short_name = (
                 stock["name"][:max_name_len]
                 if len(stock["name"]) > max_name_len
@@ -110,9 +110,24 @@ def generate_tweet_template(top_picks: List[Dict]) -> str:
                 f"{stock['confidence_score']}/100 {signal['icon']}"
             )
             lines.append(line)
-        lines.append("\n#日本株")
+        lines.append("\n#日本株 #AI")
         lines.append("\nhttps://stock-analyzer.jp/")
         template = "\n".join(lines)
+
+        # それでも140文字を超える場合、スコア表示を削除
+        if len(template) > 140:
+            lines = ["📊本日の注目銘柄"]
+            for i, stock in enumerate(top_picks[:3]):
+                signal = get_signal(stock["confidence_score"])
+                name = stock["name"]
+                short_name = name[:4] if len(name) > 4 else name
+                ticker = stock["ticker"]
+                icon = signal["icon"]
+                line = f"{medals[i]}{short_name}({ticker}) {icon}"
+                lines.append(line)
+            lines.append("\n#日本株")
+            lines.append("\nhttps://stock-analyzer.jp/")
+            template = "\n".join(lines)
 
     return template
 
