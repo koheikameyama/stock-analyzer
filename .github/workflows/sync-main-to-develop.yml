@@ -24,15 +24,17 @@ jobs:
         run: |
           # main と develop の差分を確認
           git fetch origin develop
-          DIFF=$(git diff --name-only origin/main origin/develop || echo "")
 
-          if [ -z "$DIFF" ]; then
+          # コミット履歴の差分をチェック
+          COMMIT_DIFF=$(git log --oneline origin/develop..origin/main | wc -l)
+
+          if [ "$COMMIT_DIFF" -eq 0 ]; then
             echo "has_diff=false" >> $GITHUB_OUTPUT
             echo "ℹ️ No differences between main and develop"
           else
             echo "has_diff=true" >> $GITHUB_OUTPUT
-            echo "📝 Differences found:"
-            echo "$DIFF"
+            echo "📝 ${COMMIT_DIFF} commits found in main that are not in develop:"
+            git log --oneline origin/develop..origin/main
           fi
 
       - name: Create or update sync PR
