@@ -138,7 +138,7 @@ def test_calculate_trend_indicators_empty_data():
     from technical_analysis import calculate_trend_indicators
     import pytest
 
-    with pytest.raises(ValueError, match="データ不足"):
+    with pytest.raises(ValueError, match="株価履歴が空です"):
         calculate_trend_indicators([])
 
 
