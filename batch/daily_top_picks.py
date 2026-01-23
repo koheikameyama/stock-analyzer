@@ -89,8 +89,8 @@ def generate_tweet_template(top_picks: List[Dict]) -> str:
         )
         lines.append(line)
 
-    lines.append("\n#日本株 #AI分析")
     lines.append("\nhttps://stock-analyzer.jp/")
+    lines.append("#日本株 #AI分析")
     template = "\n".join(lines)
 
     # 140文字以内に収める
@@ -110,8 +110,8 @@ def generate_tweet_template(top_picks: List[Dict]) -> str:
                 f"{stock['confidence_score']}/100 {signal['icon']}"
             )
             lines.append(line)
-        lines.append("\n#日本株 #AI")
         lines.append("\nhttps://stock-analyzer.jp/")
+        lines.append("#日本株 #AI")
         template = "\n".join(lines)
 
         # それでも140文字を超える場合、スコア表示を削除
@@ -125,8 +125,8 @@ def generate_tweet_template(top_picks: List[Dict]) -> str:
                 icon = signal["icon"]
                 line = f"{medals[i]}{short_name}({ticker}) {icon}"
                 lines.append(line)
-            lines.append("\n#日本株")
             lines.append("\nhttps://stock-analyzer.jp/")
+            lines.append("#日本株")
             template = "\n".join(lines)
 
     return template

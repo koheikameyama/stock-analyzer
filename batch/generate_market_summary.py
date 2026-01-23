@@ -160,9 +160,9 @@ X投稿用に生成してください。
         )
 
         summary = response.choices[0].message.content.strip()
-        # ハッシュタグとURLを追加
-        summary += "\n\n#日本株 #株式投資 #朝の市況"
+        # URLとハッシュタグを追加（URL→ハッシュタグの順）
         summary += "\n\nhttps://stock-analyzer.jp/"
+        summary += "\n#日本株 #株式投資 #朝の市況"
 
         return summary
     except Exception as e:
@@ -217,9 +217,9 @@ X投稿用に生成してください。
         )
 
         summary = response.choices[0].message.content.strip()
-        # ハッシュタグとURLを追加
-        summary += "\n\n#日本株 #相場振り返り #株式投資"
+        # URLとハッシュタグを追加（URL→ハッシュタグの順）
         summary += "\n\nhttps://stock-analyzer.jp/"
+        summary += "\n#日本株 #相場振り返り #株式投資"
 
         return summary
     except Exception as e:
