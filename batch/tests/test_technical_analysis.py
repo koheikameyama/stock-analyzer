@@ -164,3 +164,42 @@ def test_calculate_trend_indicators_insufficient_data():
 
     with pytest.raises(ValueError, match="最低25日必要"):
         calculate_trend_indicators(data)
+
+
+def test_integration_with_trend_analysis():
+    """統合テスト: トレンド分析を含むプロンプト生成"""
+    from technical_analysis import calculate_trend_indicators, analyze_trend
+
+    # モックデータ
+    base_date = datetime(2026, 1, 1)
+    price_history = []
+    for i in range(90):
+        price_history.append(
+            {
+                "date": base_date + timedelta(days=i),
+                "close": 1000 + i * 10,
+                "open": 990 + i * 10,
+                "high": 1010 + i * 10,
+                "low": 980 + i * 10,
+                "volume": 1000000,
+            }
+        )
+
+    # トレンド分析実行
+    indicators = calculate_trend_indicators(price_history)
+    trend_info = analyze_trend(indicators)
+
+    # プロンプト生成（実際のコードと同じロジック）
+    prompt_section = f"""
+【株価トレンド分析】
+- トレンド: {trend_info['trend']}
+- 5日移動平均: {trend_info['sma_5']}円
+- 25日移動平均: {trend_info['sma_25']}円
+- RSI(14日): {trend_info['rsi']} ({trend_info['rsi_signal']})
+- シグナル: {', '.join(trend_info['signals'])}
+"""
+
+    # プロンプトの内容を検証
+    assert "トレンド: 上昇" in prompt_section
+    assert "5日移動平均:" in prompt_section
+    assert "RSI(14日):" in prompt_section
