@@ -245,6 +245,119 @@ def fetch_stock_data(ticker: str, market: str, max_retries: int = 3) -> StockDat
     return stock_data
 
 
+def calculate_sector_statistics(conn) -> Dict[str, Dict[str, float]]:
+    """
+    セクターごとの財務指標の平均値を計算
+
+    Args:
+        conn: データベース接続
+
+    Returns:
+        Dict: セクター名をキーとした統計情報
+        例: {
+            "輸送用機器": {
+                "avg_per": 14.5,
+                "avg_pbr": 1.8,
+                "avg_roe": 10.2,
+                "count": 5
+            }
+        }
+    """
+    sector_stats = {}
+
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # セクターごとの平均値を計算
+            cur.execute(
+                """
+                SELECT
+                    s.sector,
+                    AVG(a.pe_ratio) as avg_per,
+                    AVG(a.pb_ratio) as avg_pbr,
+                    AVG(a.roe) as avg_roe,
+                    COUNT(*) as count
+                FROM stocks s
+                JOIN analyses a ON s.id = a.stock_id
+                WHERE s.sector IS NOT NULL
+                  AND s.is_ai_analysis_target = true
+                  AND a.pe_ratio IS NOT NULL
+                  AND a.pb_ratio IS NOT NULL
+                  AND a.roe IS NOT NULL
+                GROUP BY s.sector
+                """
+            )
+
+            rows = cur.fetchall()
+
+            for row in rows:
+                sector = row["sector"]
+                sector_stats[sector] = {
+                    "avg_per": float(row["avg_per"]) if row["avg_per"] else None,
+                    "avg_pbr": float(row["avg_pbr"]) if row["avg_pbr"] else None,
+                    "avg_roe": float(row["avg_roe"]) if row["avg_roe"] else None,
+                    "count": int(row["count"]),
+                }
+
+    except Exception as e:
+        print(f"⚠️ セクター統計計算エラー: {e}")
+
+    return sector_stats
+
+
+def calculate_sector_comparison(
+    stock_data: StockData, sector_stats: Optional[Dict[str, float]]
+) -> Optional[Dict[str, Any]]:
+    """
+    個別銘柄のセクター内での相対評価を計算
+
+    Args:
+        stock_data: 株式データ
+        sector_stats: セクター統計情報
+
+    Returns:
+        Dict: セクター比較データ、またはNone
+    """
+    if not sector_stats or not stock_data.sector:
+        return None
+
+    # 必要な指標がすべて揃っているか確認
+    if (
+        not stock_data.pe_ratio
+        or not stock_data.pb_ratio
+        or not stock_data.roe
+        or not sector_stats.get("avg_per")
+        or not sector_stats.get("avg_pbr")
+        or not sector_stats.get("avg_roe")
+    ):
+        return None
+
+    # パーセンテージ差分を計算（セクター平均との比較）
+    per_diff = (
+        (float(stock_data.pe_ratio) - sector_stats["avg_per"])
+        / sector_stats["avg_per"]
+        * 100
+    )
+    pbr_diff = (
+        (float(stock_data.pb_ratio) - sector_stats["avg_pbr"])
+        / sector_stats["avg_pbr"]
+        * 100
+    )
+    roe_diff = (
+        (float(stock_data.roe) - sector_stats["avg_roe"])
+        / sector_stats["avg_roe"]
+        * 100
+    )
+
+    return {
+        "sector_avg_per": round(sector_stats["avg_per"], 2),
+        "sector_avg_pbr": round(sector_stats["avg_pbr"], 2),
+        "sector_avg_roe": round(sector_stats["avg_roe"], 2),
+        "per_diff": round(per_diff, 1),
+        "pbr_diff": round(pbr_diff, 1),
+        "roe_diff": round(roe_diff, 1),
+    }
+
+
 def analyze_with_openai(stock_data: StockData, max_retries: int = 2) -> Dict[str, Any]:
     """
     OpenAI APIで株式分析を実行（リトライあり）
@@ -357,7 +470,11 @@ def analyze_with_openai(stock_data: StockData, max_retries: int = 2) -> Dict[str
 
 
 def save_analysis_to_db(
-    conn, stock_id: str, stock_data: StockData, analysis: Dict[str, Any]
+    conn,
+    stock_id: str,
+    stock_data: StockData,
+    analysis: Dict[str, Any],
+    sector_comparison: Optional[Dict[str, Any]] = None,
 ) -> bool:
     """
     分析結果をデータベースに保存（既存データがあれば更新）
@@ -367,6 +484,7 @@ def save_analysis_to_db(
         stock_id: 銘柄ID
         stock_data: 株式データ
         analysis: AI分析結果
+        sector_comparison: セクター比較データ（オプション）
 
     Returns:
         bool: 保存成功の可否
@@ -400,6 +518,7 @@ def save_analysis_to_db(
                         pb_ratio = %s,
                         roe = %s,
                         dividend_yield = %s,
+                        sector_comparison = %s,
                         updated_at = %s
                     WHERE id = %s
                 """,
@@ -413,6 +532,7 @@ def save_analysis_to_db(
                         stock_data.pb_ratio,
                         stock_data.roe,
                         stock_data.dividend_yield,
+                        json.dumps(sector_comparison) if sector_comparison else None,
                         now,
                         existing[0],  # タプルなのでインデックスでアクセス
                     ),
@@ -434,11 +554,12 @@ def save_analysis_to_db(
                         pb_ratio,
                         roe,
                         dividend_yield,
+                        sector_comparison,
                         created_at,
                         updated_at
                     ) VALUES (
                         %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s
                     )
                 """,
                     (
@@ -453,6 +574,7 @@ def save_analysis_to_db(
                         stock_data.pb_ratio,
                         stock_data.roe,
                         stock_data.dividend_yield,
+                        json.dumps(sector_comparison) if sector_comparison else None,
                         now,
                         now,
                     ),
@@ -535,13 +657,16 @@ def save_price_history_to_db(conn, stock_id: str, stock_data: StockData) -> bool
         return False
 
 
-def process_single_stock(stock: Dict[str, Any], force: bool = False) -> bool:
+def process_single_stock(
+    stock: Dict[str, Any], force: bool = False, sector_stats: Optional[Dict] = None
+) -> bool:
     """
     単一銘柄を処理
 
     Args:
         stock: 銘柄データ
         force: 既存データを無視して強制的に再実行
+        sector_stats: セクター統計情報（オプション）
 
     Returns:
         bool: 処理が成功したかどうか
@@ -586,6 +711,10 @@ def process_single_stock(stock: Dict[str, Any], force: bool = False) -> bool:
         # 株価データ取得
         stock_data = fetch_stock_data(ticker, stock["market"])
 
+        # DBから取得したsectorを使用（yfinanceのsectorは英語なので使わない）
+        if stock.get("sector"):
+            stock_data.sector = stock["sector"]
+
         if stock_data.error or stock_data.current_price == 0:
             print(f"⚠️  {ticker}: データ取得失敗")
             return False
@@ -593,8 +722,15 @@ def process_single_stock(stock: Dict[str, Any], force: bool = False) -> bool:
         # AI分析実行
         analysis = analyze_with_openai(stock_data)
 
+        # セクター比較を計算
+        sector_comparison = None
+        if sector_stats and stock_data.sector in sector_stats:
+            sector_comparison = calculate_sector_comparison(
+                stock_data, sector_stats[stock_data.sector]
+            )
+
         # データベースに保存
-        if save_analysis_to_db(conn, stock["id"], stock_data, analysis):
+        if save_analysis_to_db(conn, stock["id"], stock_data, analysis, sector_comparison):
             # 株価履歴も保存
             save_price_history_to_db(conn, stock["id"], stock_data)
             print(
@@ -716,7 +852,7 @@ def main():
         # 銘柄リストを取得（is_ai_analysis_target=trueのみ）
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
-                SELECT id, ticker, market
+                SELECT id, ticker, market, sector
                 FROM stocks
                 WHERE is_ai_analysis_target = true
                 ORDER BY ticker
@@ -738,10 +874,15 @@ def main():
             )
             return
 
+        # セクター統計を計算
+        print("📊 セクター統計を計算中...")
+        sector_stats = calculate_sector_statistics(conn)
+        print(f"✅ {len(sector_stats)}セクターの統計を取得\n")
+
         # 順次処理
         for i, stock in enumerate(stocks):
             print(f"[{i + 1}/{total_stocks}] ", end="")
-            success = process_single_stock(stock, force=args.force)
+            success = process_single_stock(stock, force=args.force, sector_stats=sector_stats)
 
             if success:
                 success_count += 1
