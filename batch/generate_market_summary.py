@@ -234,7 +234,11 @@ def send_to_slack(webhook_url: str, message: str, post_type: str):
         message: 送信するメッセージ
         post_type: 投稿タイプ（morning/evening）
     """
-    now = datetime.now().strftime("%H:%M")
+    from datetime import timezone, timedelta
+
+    # JSTタイムゾーンを定義
+    jst = timezone(timedelta(hours=9))
+    now = datetime.now(jst).strftime("%H:%M")
     post_type_ja = "朝" if post_type == "morning" else "夜"
 
     payload = {
