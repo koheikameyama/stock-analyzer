@@ -522,21 +522,7 @@ def save_price_history_to_db(conn, stock_id: str, stock_data: StockData) -> bool
             execute_values(
                 cur,
                 execute_values_query,
-                [
-                    (
-                        v[0],
-                        v[1],
-                        v[2],
-                        v[3],
-                        v[4],
-                        v[5],
-                        v[6],
-                        v[7],
-                        "NOW()",
-                        "NOW()",
-                    )
-                    for v in values
-                ],
+                values,
                 template="(%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())",
             )
 
