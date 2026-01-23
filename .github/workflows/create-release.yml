@@ -183,17 +183,7 @@ jobs:
           PR_DETAILS='${{ steps.get_pr_details.outputs.pr_details }}'
 
           # OpenAI APIにリクエスト
-          PROMPT="以下のPRの内容をもとに、ユーザー向けの華やかで分かりやすいリリースノートを生成してください。
-
-要件:
-- 各変更点を「## 更新内容」セクション配下に箇条書きで記載
-- 技術用語は避け、ユーザーにとっての価値を明確に説明
-- 絵文字を適度に使用して見やすく
-- 簡潔で読みやすい文章
-- マークダウン形式で出力
-
-PRの情報:
-$PR_DETAILS"
+          PROMPT="以下のPRの内容をもとに、ユーザー向けの華やかで分かりやすいリリースノートを生成してください。\n\n要件:\n- 各変更点を「## 更新内容」セクション配下に箇条書きで記載\n- 技術用語は避け、ユーザーにとっての価値を明確に説明\n- 絵文字を適度に使用して見やすく\n- 簡潔で読みやすい文章\n- マークダウン形式で出力\n\nPRの情報:\n$PR_DETAILS"
 
           RESPONSE=$(curl -s https://api.openai.com/v1/chat/completions \
             -H "Content-Type: application/json" \
