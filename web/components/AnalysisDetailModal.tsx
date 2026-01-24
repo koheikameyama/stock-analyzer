@@ -10,6 +10,7 @@ import { useAnalysisDetail } from '../hooks/useAnalyses';
 import { LoadingSpinner } from './LoadingSpinner';
 import { Tooltip as InfoTooltip } from './Tooltip';
 import { StockChart } from './StockChart';
+import { SectorComparison } from './SectorComparison';
 
 interface AnalysisDetailModalProps {
   analysisId?: string | null;
@@ -283,6 +284,17 @@ export const AnalysisDetailModal: React.FC<AnalysisDetailModalProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Sector Comparison */}
+              {analysis?.sectorComparison && analysis.stock.sector && (
+                <SectorComparison
+                  sectorComparison={analysis.sectorComparison}
+                  sector={analysis.stock.sector}
+                  currentPer={analysis.peRatio}
+                  currentPbr={analysis.pbRatio}
+                  currentRoe={analysis.roe}
+                />
+              )}
 
               {/* Analysis Text */}
               {analysis ? (
