@@ -25,11 +25,11 @@
     "web"
   ],
   "devDependencies": {
-    "prisma": "^6.2.0",
+    "prisma": "^6.19.2",
     "tsx": "^4.19.2"
   },
   "dependencies": {
-    "@prisma/client": "^6.2.0",
+    "@prisma/client": "^6.19.2",
     "normalize-path": "^3.0.0",
     "web-push": "^3.6.7"
   },

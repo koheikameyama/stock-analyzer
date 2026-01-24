@@ -19,6 +19,16 @@ export interface Stock {
   updatedAt: string;
 }
 
+// セクター比較データ
+export interface SectorComparison {
+  sector_avg_per: number;
+  sector_avg_pbr: number;
+  sector_avg_roe: number;
+  per_diff: number;
+  pbr_diff: number;
+  roe_diff: number;
+}
+
 // AI分析結果
 export interface Analysis {
   id: string;
@@ -38,6 +48,7 @@ export interface Analysis {
   pbRatio: number | null;
   roe: number | null;
   dividendYield: number | null;
+  sectorComparison: SectorComparison | null;
   createdAt: string;
   updatedAt: string;
 }
