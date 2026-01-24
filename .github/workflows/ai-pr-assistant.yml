@@ -1,4 +1,4 @@
-name: Auto Version Label
+name: AI PR Assistant
 
 on:
   pull_request:
