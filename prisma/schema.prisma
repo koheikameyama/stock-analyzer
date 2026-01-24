@@ -72,6 +72,9 @@ model Analysis {
   roe           Float?
   dividendYield Float? @map("dividend_yield")
 
+  // セクター比較データ（JSON形式）
+  sectorComparison Json? @map("sector_comparison")
+
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
