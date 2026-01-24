@@ -43,6 +43,15 @@ jobs:
           echo "$files" >> $GITHUB_OUTPUT
           echo "EOFMARKER" >> $GITHUB_OUTPUT
 
+      - name: Get diff summary
+        id: diff
+        run: |
+          # diffの要約を取得（最初の100行程度）
+          diff=$(git diff origin/develop...HEAD | head -100)
+          echo "diff<<EOFMARKER" >> $GITHUB_OUTPUT
+          echo "$diff" >> $GITHUB_OUTPUT
+          echo "EOFMARKER" >> $GITHUB_OUTPUT
+
       - name: Analyze with AI
         id: analyze
         uses: actions/github-script@v7
@@ -55,8 +64,9 @@ jobs:
             const title = `${{ steps.pr-info.outputs.title }}`;
             const body = `${{ steps.pr-info.outputs.body }}`;
             const files = `${{ steps.files.outputs.files }}`;
+            const diff = `${{ steps.diff.outputs.diff }}`;
 
-            const prompt = `以下のPRを分析し、適切なバージョンラベルを判定してください。
+            const prompt = `以下のPRを分析し、適切なバージョンラベルとPR本文を生成してください。
 
 ## PR情報
 **タイトル**: ${title}
@@ -67,7 +77,14 @@ ${body}
 **変更ファイル**:
 ${files}
 
-## 判定基準
+**Diff要約**:
+\`\`\`
+${diff}
+\`\`\`
+
+## タスク1: バージョンラベル判定
+
+### 判定基準
 
 ### version:major
 - 破壊的変更（APIの仕様変更、互換性のない変更）
@@ -94,12 +111,51 @@ ${files}
 - ✅ 伝わる → バージョンラベル必要
 - ❌ 伝わらない → none
 
+## タスク2: PR本文生成
+
+以下のテンプレートに従って、PR本文を生成してください。
+
+### テンプレート構造
+\`\`\`markdown
+## 概要
+<!-- このPRで何を変更・追加・修正したか簡潔に説明 -->
+
+## 変更内容
+<!-- 技術的な変更点を箇条書き -->
+-
+
+## ユーザー向けの変更
+<!-- version:major/minorの場合は必須 -->
+<!-- ユーザーにとっての価値を説明 -->
+-
+
+## テスト
+- [ ] ローカル環境で動作確認
+- [ ] スマホ表示を確認（モバイルファースト）
+- [ ] N+1問題がないことを確認
+
+## 関連Issue
+Closes #
+\`\`\`
+
+### 生成ルール
+1. **概要**: PRタイトルを元に、1-2文で簡潔に説明
+2. **変更内容**: 変更ファイルとdiffから技術的な変更点を箇条書き（3-5項目）
+3. **ユーザー向けの変更**: バージョンラベルがnone以外の場合のみ記載。ユーザーメリットを明確に
+4. **テスト**: チェックボックスはそのまま
+5. **関連Issue**: 空のまま（ユーザーが後で記入）
+
+### 注意点
+- PR本文が既に入力されている場合は、生成したPR本文は参考情報として提示するのみ
+- PR本文が空の場合のみ、自動更新を提案
+
 ## 回答形式
 JSON形式で回答してください:
 {
   "label": "version:minor" | "version:major" | "version:patch" | "none",
   "reason": "判定理由（日本語で簡潔に）",
-  "user_value": "ユーザーにとっての価値（labelがnoneの場合は空文字）"
+  "user_value": "ユーザーにとっての価値（labelがnoneの場合は空文字）",
+  "pr_body": "生成したPR本文（Markdown形式）"
 }`;
 
             // OpenAI APIを呼び出し
@@ -158,6 +214,7 @@ JSON形式で回答してください:
             core.setOutput('label', result.label);
             core.setOutput('reason', result.reason);
             core.setOutput('user_value', result.user_value || '');
+            core.setOutput('pr_body', result.pr_body || '');
 
             console.log('AI判定結果:', result);
 
@@ -194,6 +251,31 @@ JSON形式で回答してください:
               labels: [label]
             });
 
+      - name: Update PR body if empty
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const currentBody = context.payload.pull_request.body || '';
+            const generatedBody = `${{ steps.analyze.outputs.pr_body }}`;
+
+            // PR本文が空、またはテンプレートのコメントのみの場合は更新
+            const isEmptyOrTemplate = !currentBody ||
+              currentBody.trim().length < 50 ||
+              currentBody.includes('<!-- このPRで何を変更');
+
+            if (isEmptyOrTemplate && generatedBody) {
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                body: generatedBody
+              });
+              console.log('PR本文を更新しました');
+            } else {
+              console.log('PR本文は既に入力されているため、更新しませんでした');
+            }
+
       - name: Post comment
         uses: actions/github-script@v7
         with:
@@ -202,6 +284,11 @@ JSON形式で回答してください:
             const label = '${{ steps.analyze.outputs.label }}';
             const reason = '${{ steps.analyze.outputs.reason }}';
             const userValue = '${{ steps.analyze.outputs.user_value }}';
+            const currentBody = context.payload.pull_request.body || '';
+            const generatedBody = `${{ steps.analyze.outputs.pr_body }}`;
+            const isEmptyOrTemplate = !currentBody ||
+              currentBody.trim().length < 50 ||
+              currentBody.includes('<!-- このPRで何を変更');
 
             let emoji = '🏷️';
             if (label === 'version:major') emoji = '🚨';
@@ -217,14 +304,21 @@ JSON形式で回答してください:
               message += `\n**ユーザー価値**: ${userValue}\n`;
             }
 
+            // PR本文が更新されなかった場合は、生成された本文を提示
+            if (!isEmptyOrTemplate && generatedBody) {
+              message += `\n---\n\n`;
+              message += `📝 **AIが生成したPR本文（参考）**\n\n`;
+              message += `<details>\n<summary>クリックして表示</summary>\n\n`;
+              message += generatedBody;
+              message += `\n</details>\n`;
+            }
+
             if (label !== 'none') {
               message += `\n---\n`;
               message += `⚠️ **重要**: このPRには \`${label}\` ラベルが付与されました。\n\n`;
-              message += `PR本文に以下のセクションを追加してください：\n\n`;
-              message += '```markdown\n';
-              message += '### ユーザー向けの変更\n';
-              message += '- **機能名**: ユーザーにとっての価値を説明（技術的な詳細ではなく、ユーザーメリットを記載）\n';
-              message += '```\n';
+              if (!isEmptyOrTemplate) {
+                message += `PR本文に「### ユーザー向けの変更」セクションが含まれていることを確認してください。\n`;
+              }
             }
 
             await github.rest.issues.createComment({
