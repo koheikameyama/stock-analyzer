@@ -1,0 +1,329 @@
+name: AI PR Assistant
+
+on:
+  pull_request:
+    types: [opened, synchronize, edited]
+    branches:
+      - develop
+
+jobs:
+  auto-label:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR information
+        id: pr-info
+        run: |
+          # PRタイトルと本文を取得
+          echo "title=${{ github.event.pull_request.title }}" >> $GITHUB_OUTPUT
+
+          # 本文をエスケープして保存
+          body=$(cat <<'EOF'
+          ${{ github.event.pull_request.body }}
+          EOF
+          )
+          echo "body<<EOFMARKER" >> $GITHUB_OUTPUT
+          echo "$body" >> $GITHUB_OUTPUT
+          echo "EOFMARKER" >> $GITHUB_OUTPUT
+
+      - name: Get changed files
+        id: files
+        run: |
+          # 変更ファイルリストを取得
+          files=$(git diff --name-only origin/develop...HEAD | head -20)
+          echo "files<<EOFMARKER" >> $GITHUB_OUTPUT
+          echo "$files" >> $GITHUB_OUTPUT
+          echo "EOFMARKER" >> $GITHUB_OUTPUT
+
+      - name: Get diff summary
+        id: diff
+        run: |
+          # diffの要約を取得（最初の100行程度）
+          diff=$(git diff origin/develop...HEAD | head -100)
+          echo "diff<<EOFMARKER" >> $GITHUB_OUTPUT
+          echo "$diff" >> $GITHUB_OUTPUT
+          echo "EOFMARKER" >> $GITHUB_OUTPUT
+
+      - name: Analyze with AI
+        id: analyze
+        uses: actions/github-script@v7
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        with:
+          script: |
+            const https = require('https');
+
+            const title = `${{ steps.pr-info.outputs.title }}`;
+            const body = `${{ steps.pr-info.outputs.body }}`;
+            const files = `${{ steps.files.outputs.files }}`;
+            const diff = `${{ steps.diff.outputs.diff }}`;
+
+            const prompt = `以下のPRを分析し、適切なバージョンラベルとPR本文を生成してください。
+
+## PR情報
+**タイトル**: ${title}
+
+**本文**:
+${body}
+
+**変更ファイル**:
+${files}
+
+**Diff要約**:
+\`\`\`
+${diff}
+\`\`\`
+
+## タスク1: バージョンラベル判定
+
+### 判定基準
+
+### version:major
+- 破壊的変更（APIの仕様変更、互換性のない変更）
+- データ構造の大幅な変更
+
+### version:minor
+- **新機能追加**（ユーザーに価値がある）
+- **ユーザーに説明して価値が伝わる変更**
+- 例: 新しいUI機能、分析機能の追加、データ表示の改善
+
+### version:patch
+- **batch/のみの変更で、ユーザーに価値がある場合**
+- 例: AI分析精度の向上、データ取得の信頼性向上
+- 注意: 内部リファクタリングや技術的バグ修正は対象外
+
+### none
+- 内部リファクタリング
+- 技術的バグ修正（ユーザーに見えない）
+- ドキュメント修正のみ
+- コードクリーンアップ
+
+## 重要な判断基準
+「ユーザーに説明して価値が伝わるか？」で判断してください。
+- ✅ 伝わる → バージョンラベル必要
+- ❌ 伝わらない → none
+
+## タスク2: PR本文生成
+
+以下のテンプレートに従って、PR本文を生成してください。
+
+### テンプレート構造
+\`\`\`markdown
+## 概要
+<!-- このPRで何を変更・追加・修正したか簡潔に説明 -->
+
+## 変更内容
+<!-- 技術的な変更点を箇条書き -->
+-
+
+## ユーザー向けの変更
+<!-- version:major/minorの場合は必須 -->
+<!-- ユーザーにとっての価値を説明 -->
+-
+
+## テスト
+- [ ] ローカル環境で動作確認
+- [ ] スマホ表示を確認（モバイルファースト）
+- [ ] N+1問題がないことを確認
+
+## 関連Issue
+Closes #
+\`\`\`
+
+### 生成ルール
+1. **概要**: PRタイトルを元に、1-2文で簡潔に説明
+2. **変更内容**: 変更ファイルとdiffから技術的な変更点を箇条書き（3-5項目）
+3. **ユーザー向けの変更**: バージョンラベルがnone以外の場合のみ記載。ユーザーメリットを明確に
+4. **テスト**: チェックボックスはそのまま
+5. **関連Issue**: 空のまま（ユーザーが後で記入）
+
+### 注意点
+- PR本文が既に入力されている場合は、生成したPR本文は参考情報として提示するのみ
+- PR本文が空の場合のみ、自動更新を提案
+
+## 回答形式
+JSON形式で回答してください:
+{
+  "label": "version:minor" | "version:major" | "version:patch" | "none",
+  "reason": "判定理由（日本語で簡潔に）",
+  "user_value": "ユーザーにとっての価値（labelがnoneの場合は空文字）",
+  "pr_body": "生成したPR本文（Markdown形式）"
+}`;
+
+            // OpenAI APIを呼び出し
+            const requestBody = JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'あなたは GitHub PR のバージョンラベルを判定する専門家です。ユーザー価値を重視して判定してください。'
+                },
+                {
+                  role: 'user',
+                  content: prompt
+                }
+              ],
+              response_format: { type: 'json_object' },
+              temperature: 0.3
+            });
+
+            const response = await new Promise((resolve, reject) => {
+              const req = https.request(
+                {
+                  hostname: 'api.openai.com',
+                  port: 443,
+                  path: '/v1/chat/completions',
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                    'Content-Length': Buffer.byteLength(requestBody)
+                  }
+                },
+                (res) => {
+                  let data = '';
+                  res.on('data', (chunk) => { data += chunk; });
+                  res.on('end', () => {
+                    try {
+                      resolve(JSON.parse(data));
+                    } catch (e) {
+                      reject(e);
+                    }
+                  });
+                }
+              );
+              req.on('error', reject);
+              req.write(requestBody);
+              req.end();
+            });
+
+            if (response.error) {
+              throw new Error(`OpenAI API Error: ${response.error.message}`);
+            }
+
+            const result = JSON.parse(response.choices[0].message.content);
+
+            core.setOutput('label', result.label);
+            core.setOutput('reason', result.reason);
+            core.setOutput('user_value', result.user_value || '');
+            core.setOutput('pr_body', result.pr_body || '');
+
+            console.log('AI判定結果:', result);
+
+      - name: Add version label
+        if: steps.analyze.outputs.label != 'none'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const label = '${{ steps.analyze.outputs.label }}';
+
+            // 既存のバージョンラベルを削除
+            const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number
+            });
+
+            const versionLabels = currentLabels.filter(l => l.name.startsWith('version:'));
+            for (const vl of versionLabels) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                name: vl.name
+              });
+            }
+
+            // 新しいラベルを追加
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: [label]
+            });
+
+      - name: Update PR body if empty
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const currentBody = context.payload.pull_request.body || '';
+            const generatedBody = `${{ steps.analyze.outputs.pr_body }}`;
+
+            // PR本文が空、またはテンプレートのコメントのみの場合は更新
+            const isEmptyOrTemplate = !currentBody ||
+              currentBody.trim().length < 50 ||
+              currentBody.includes('<!-- このPRで何を変更');
+
+            if (isEmptyOrTemplate && generatedBody) {
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                body: generatedBody
+              });
+              console.log('PR本文を更新しました');
+            } else {
+              console.log('PR本文は既に入力されているため、更新しませんでした');
+            }
+
+      - name: Post comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const label = '${{ steps.analyze.outputs.label }}';
+            const reason = '${{ steps.analyze.outputs.reason }}';
+            const userValue = '${{ steps.analyze.outputs.user_value }}';
+            const currentBody = context.payload.pull_request.body || '';
+            const generatedBody = `${{ steps.analyze.outputs.pr_body }}`;
+            const isEmptyOrTemplate = !currentBody ||
+              currentBody.trim().length < 50 ||
+              currentBody.includes('<!-- このPRで何を変更');
+
+            let emoji = '🏷️';
+            if (label === 'version:major') emoji = '🚨';
+            if (label === 'version:minor') emoji = '✨';
+            if (label === 'version:patch') emoji = '🔧';
+            if (label === 'none') emoji = '📝';
+
+            let message = `${emoji} **AIバージョンラベル判定**\n\n`;
+            message += `**判定結果**: \`${label}\`\n\n`;
+            message += `**理由**: ${reason}\n`;
+
+            if (userValue) {
+              message += `\n**ユーザー価値**: ${userValue}\n`;
+            }
+
+            // PR本文が更新されなかった場合は、生成された本文を提示
+            if (!isEmptyOrTemplate && generatedBody) {
+              message += `\n---\n\n`;
+              message += `📝 **AIが生成したPR本文（参考）**\n\n`;
+              message += `<details>\n<summary>クリックして表示</summary>\n\n`;
+              message += generatedBody;
+              message += `\n</details>\n`;
+            }
+
+            if (label !== 'none') {
+              message += `\n---\n`;
+              message += `⚠️ **重要**: このPRには \`${label}\` ラベルが付与されました。\n\n`;
+              if (!isEmptyOrTemplate) {
+                message += `PR本文に「### ユーザー向けの変更」セクションが含まれていることを確認してください。\n`;
+              }
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: message
+            });
