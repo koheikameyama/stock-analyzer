@@ -231,11 +231,13 @@ jobs:
 
       - name: Update PR body if empty
         uses: actions/github-script@v7
+        env:
+          PR_BODY: ${{ steps.analyze.outputs.pr_body }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const currentBody = context.payload.pull_request.body || '';
-            const generatedBody = `${{ steps.analyze.outputs.pr_body }}`;
+            const generatedBody = process.env.PR_BODY || '';
 
             // PR本文が空、またはテンプレートのコメントのみの場合は更新
             const isEmptyOrTemplate = !currentBody ||
@@ -256,14 +258,19 @@ jobs:
 
       - name: Post comment
         uses: actions/github-script@v7
+        env:
+          AI_LABEL: ${{ steps.analyze.outputs.label }}
+          AI_REASON: ${{ steps.analyze.outputs.reason }}
+          AI_USER_VALUE: ${{ steps.analyze.outputs.user_value }}
+          AI_PR_BODY: ${{ steps.analyze.outputs.pr_body }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const label = '${{ steps.analyze.outputs.label }}';
-            const reason = '${{ steps.analyze.outputs.reason }}';
-            const userValue = '${{ steps.analyze.outputs.user_value }}';
+            const label = process.env.AI_LABEL || '';
+            const reason = process.env.AI_REASON || '';
+            const userValue = process.env.AI_USER_VALUE || '';
             const currentBody = context.payload.pull_request.body || '';
-            const generatedBody = `${{ steps.analyze.outputs.pr_body }}`;
+            const generatedBody = process.env.AI_PR_BODY || '';
             const isEmptyOrTemplate = !currentBody ||
               currentBody.trim().length < 50 ||
               currentBody.includes('<!-- このPRで何を変更');
