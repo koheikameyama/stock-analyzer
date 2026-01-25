@@ -64,6 +64,7 @@ jobs:
         with:
           script: |
             const https = require('https');
+            const fs = require('fs');
 
             const title = process.env.PR_TITLE || '';
             const body = process.env.PR_BODY || '';
