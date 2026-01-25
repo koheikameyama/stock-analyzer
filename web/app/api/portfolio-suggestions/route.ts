@@ -3,9 +3,17 @@ import { PrismaClient } from '@prisma/client';
 import OpenAI from 'openai';
 
 const prisma = new PrismaClient();
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+
+// OpenAIクライアントのlazy initialization
+let openai: OpenAI | null = null;
+function getOpenAIClient(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
 
 // リクエストの型定義
 type RiskTolerance = 'conservative' | 'balanced' | 'aggressive';
@@ -257,7 +265,8 @@ ${stocksList}
 
 各セクション100-150文字程度で、親しみやすく説明してください。`;
 
-  const completion = await openai.chat.completions.create({
+  const client = getOpenAIClient();
+  const completion = await client.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
       {
