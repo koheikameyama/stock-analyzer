@@ -56,8 +56,16 @@ jobs:
             # 最新のコミットメッセージを取得
             LATEST_COMMIT_MSG=$(git log -1 --pretty=format:"%s")
 
-            # PR本文を作成（改行を明示的に指定）
-            PR_BODY="## 🔄 自動同期\n\nmainブランチの変更をdevelopブランチに同期します。\n\n### 最新のコミット\n${LATEST_COMMIT_MSG}\n\n---\n*このPRは自動的に作成されました*"
+            # PR本文を作成
+            PR_BODY="## 🔄 自動同期
+
+mainブランチの変更をdevelopブランチに同期します。
+
+### 最新のコミット
+${LATEST_COMMIT_MSG}
+
+---
+*このPRは自動的に作成されました*"
 
             # PRを作成
             gh pr create \
