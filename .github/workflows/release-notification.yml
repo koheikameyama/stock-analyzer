@@ -5,12 +5,8 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
-      title:
-        description: 'リリースタイトル（例: v1.1.0 - 配当利回り修正など）'
-        required: true
-        type: string
-      changes:
-        description: '変更内容（改行区切りで箇条書き）'
+      version:
+        description: 'バージョン（例: v1.8.0）'
         required: true
         type: string
 
@@ -27,15 +23,18 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           RELEASE_NAME: ${{ github.event.release.name }}
           RELEASE_BODY: ${{ github.event.release.body }}
-          INPUT_TITLE: ${{ github.event.inputs.title }}
-          INPUT_CHANGES: ${{ github.event.inputs.changes }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "$EVENT_NAME" = "release" ]; then
             TITLE="$RELEASE_NAME"
             BODY="$RELEASE_BODY"
           else
-            TITLE="$INPUT_TITLE"
-            BODY="$INPUT_CHANGES"
+            # 手動実行時: 指定されたバージョンのリリース情報を取得
+            VERSION="$INPUT_VERSION"
+            RELEASE_DATA=$(gh release view "$VERSION" --json body,tagName)
+            TITLE=$(echo "$RELEASE_DATA" | jq -r '.tagName')
+            BODY=$(echo "$RELEASE_DATA" | jq -r '.body')
           fi
 
           echo "TITLE=$TITLE" >> $GITHUB_ENV
