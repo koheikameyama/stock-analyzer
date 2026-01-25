@@ -94,7 +94,7 @@ ${LATEST_COMMIT_MSG}
           echo "### 🔄 Sync Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ "${{ steps.check_diff.outputs.has_diff }}" == "true" ]; then
+          if [ "${{ steps.check_diff.outputs.has_diff }}" = "true" ]; then
             echo "✅ **Synced**: main → develop" >> $GITHUB_STEP_SUMMARY
           else
             echo "ℹ️ **No changes**: main and develop are already in sync" >> $GITHUB_STEP_SUMMARY
