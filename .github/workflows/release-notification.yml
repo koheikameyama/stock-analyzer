@@ -5,17 +5,9 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
-      title:
-        description: 'リリースタイトル（例: v1.1.0 - 配当利回り修正など）'
+      version:
+        description: 'バージョン（例: v1.8.0）'
         required: true
-        type: string
-      changes:
-        description: '変更内容（改行区切りで箇条書き）'
-        required: true
-        type: string
-      post_template:
-        description: 'X投稿テンプレート（省略可、自動生成されます）'
-        required: false
         type: string
 
 jobs:
@@ -31,16 +23,18 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           RELEASE_NAME: ${{ github.event.release.name }}
           RELEASE_BODY: ${{ github.event.release.body }}
-          INPUT_TITLE: ${{ github.event.inputs.title }}
-          INPUT_CHANGES: ${{ github.event.inputs.changes }}
-          INPUT_POST_TEMPLATE: ${{ github.event.inputs.post_template }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "$EVENT_NAME" = "release" ]; then
             TITLE="$RELEASE_NAME"
             BODY="$RELEASE_BODY"
           else
-            TITLE="$INPUT_TITLE"
-            BODY="$INPUT_CHANGES"
+            # 手動実行時: 指定されたバージョンのリリース情報を取得
+            VERSION="$INPUT_VERSION"
+            RELEASE_DATA=$(gh release view "$VERSION" --json body,tagName)
+            TITLE=$(echo "$RELEASE_DATA" | jq -r '.tagName')
+            BODY=$(echo "$RELEASE_DATA" | jq -r '.body')
           fi
 
           echo "TITLE=$TITLE" >> $GITHUB_ENV
@@ -49,26 +43,6 @@ jobs:
             echo "$BODY"
             echo "EOF_BODY"
           } >> $GITHUB_ENV
-
-          if [ "$EVENT_NAME" != "release" ] && [ -n "$INPUT_POST_TEMPLATE" ]; then
-            {
-              echo "POST_TEMPLATE<<EOF_POST"
-              echo "$INPUT_POST_TEMPLATE"
-              echo "EOF_POST"
-            } >> $GITHUB_ENV
-          else
-            {
-              echo "POST_TEMPLATE<<EOF_POST"
-              echo "【アップデート】${TITLE}"
-              echo ""
-              echo "$BODY"
-              echo ""
-              echo "https://stock-analyzer.jp/"
-              echo ""
-              echo "#AI株式分析 #投資ツール"
-              echo "EOF_POST"
-            } >> $GITHUB_ENV
-          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -82,6 +56,7 @@ jobs:
       - name: Send to Slack
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           cd batch
           python release_notification.py
