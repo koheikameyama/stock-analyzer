@@ -176,3 +176,58 @@ model AnalysisRequest {
   @@index([requestCount])
   @@map("analysis_requests")
 }
+
+// ユーザーモデル（NextAuth.js用）
+model User {
+  // 主キー
+  id String @id @default(uuid())
+
+  // 基本情報
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+
+  // プランタイプ
+  plan String @default("free") // 'free' | 'premium'
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // リレーション
+  accounts Account[]
+
+  @@map("users")
+}
+
+// アカウントモデル（NextAuth.js用 - OAuth情報）
+model Account {
+  // 主キー
+  id String @id @default(uuid())
+
+  // 外部キー - User
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // OAuth情報
+  type              String
+  provider          String
+  providerAccountId String @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // ユニーク制約とインデックス
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
