@@ -1,12 +1,11 @@
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 import PortfolioSummary from '@/components/PortfolioSummary';
 import HoldingsList from '@/components/HoldingsList';
 import ActionProposals from '@/components/ActionProposals';
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   // 未ログインの場合はログインページへリダイレクト
   if (!session) {

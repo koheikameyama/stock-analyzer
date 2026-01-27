@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/lib/auth';
 import OpenAI from 'openai';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 // ポートフォリオ提案のレスポンス型
@@ -152,7 +151,7 @@ function calculateRecommendedShares(
 export async function POST(request: NextRequest) {
   try {
     // 認証チェック
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     }
