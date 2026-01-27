@@ -1,0 +1,40 @@
+name: Daily Portfolio Analysis
+
+on:
+  schedule:
+    # 毎日18:00 JST（09:00 UTC）に実行
+    - cron: '0 9 * * *'
+  workflow_dispatch: # 手動実行を許可
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd batch
+          pip install -r requirements.txt
+
+      - name: Run daily portfolio analysis
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cd batch
+          python daily_portfolio_analysis.py
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Daily portfolio analysis failed"
+          # TODO: Slack通知などを追加
