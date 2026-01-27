@@ -38,6 +38,8 @@ model Stock {
   analyses        Analysis[]
   priceHistory    PriceHistory[]
   analysisRequest AnalysisRequest?
+  holdings        Holding[]
+  actionProposals ActionProposal[]
 
   // インデックス
   @@index([market])
@@ -196,7 +198,9 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // リレーション
-  accounts Account[]
+  accounts        Account[]
+  portfolio       Portfolio?
+  actionProposals ActionProposal[]
 
   @@map("users")
 }
@@ -230,4 +234,90 @@ model Account {
   @@unique([provider, providerAccountId])
   @@index([userId])
   @@map("accounts")
+}
+
+// ポートフォリオモデル
+model Portfolio {
+  // 主キー
+  id String @id @default(uuid())
+
+  // 外部キー - User
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 投資予算（円）
+  investmentBudget Int @map("investment_budget")
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // リレーション
+  holdings Holding[]
+
+  @@index([userId])
+  @@map("portfolios")
+}
+
+// 保有銘柄モデル
+model Holding {
+  // 主キー
+  id String @id @default(uuid())
+
+  // 外部キー - Portfolio
+  portfolioId String @map("portfolio_id")
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  // 外部キー - Stock
+  stockId String @map("stock_id")
+  stock   Stock  @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  // 保有情報
+  shares        Int      // 保有株数
+  purchasePrice Decimal  @map("purchase_price") // 購入単価
+  purchaseDate  DateTime @map("purchase_date") // 購入日
+
+  // 売却情報（nullなら保有中）
+  soldDate  DateTime? @map("sold_date") // 売却日
+  soldPrice Decimal?  @map("sold_price") // 売却単価
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([portfolioId])
+  @@index([stockId])
+  @@index([purchaseDate])
+  @@map("holdings")
+}
+
+// アクション提案モデル
+model ActionProposal {
+  // 主キー
+  id String @id @default(uuid())
+
+  // 外部キー - User
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 外部キー - Stock
+  stockId String @map("stock_id")
+  stock   Stock  @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  // アクション情報
+  actionType String // 'SELL', 'BUY', 'HOLD_ALERT'
+  reason     String // 提案理由
+  confidence Int // 確信度 0-100
+
+  // 既読フラグ
+  isRead Boolean @default(false) @map("is_read")
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([stockId])
+  @@index([createdAt])
+  @@index([isRead])
+  @@map("action_proposals")
 }
