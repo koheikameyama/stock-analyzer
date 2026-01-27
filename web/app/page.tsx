@@ -20,7 +20,13 @@ export default async function Home() {
       {/* ヘッダー */}
       <header className="container mx-auto px-4 py-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-surface-900">💹 AI株式投資ツール</h1>
+          <div className="flex items-center gap-3">
+            <img src="/images/logo.png" alt="Stock Analyzer" className="w-10 h-10 object-contain" />
+            <div>
+              <h1 className="text-xl font-bold text-surface-900">AI株式投資ツール</h1>
+              <p className="text-xs text-surface-500">初心者にも優しい投資サポート</p>
+            </div>
+          </div>
           <Link
             href="/login"
             className="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors"
